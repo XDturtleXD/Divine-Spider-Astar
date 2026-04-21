@@ -18,13 +18,14 @@ def astar(maze):
     
     while priority_queue:
         _, node = heapq.heappop(priority_queue)
+        yield node
         if node == goal[0]:
             path = []
             while node!=start:
                 path.append(node)
                 node = parents[node[0]][node[1]]
-            path.reverse()
-            return path
+            #path.reverse()
+            #return path
         neighbors = maze.getNeighbors(node[0], node[1])
         for n in neighbors:
             new_cost = g_cost[node[0]][node[1]] + 1
@@ -34,4 +35,4 @@ def astar(maze):
                 heapq.heappush(priority_queue, (priority, n))
                 parents[n[0]][n[1]] = node
     
-    return []
+    #return []
