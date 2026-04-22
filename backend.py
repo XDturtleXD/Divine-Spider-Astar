@@ -4,6 +4,31 @@ import heapq
 def heuristic_1(a, b):
     return abs(a[0] - b[0]) + abs(a[1] - b[1])
 
+
+def manhattan(a, b):
+    return abs(a[0] - b[0]) + abs(a[1] - b[1])
+
+
+def mst_heuristic(pos, remaining):
+    if not remaining:
+        return 0
+    nodes = [pos] + list(remaining)
+    n = len(nodes)
+    in_tree = {0}
+    min_edge = [manhattan(pos, nodes[i]) for i in range(n)]
+    min_edge[0] = 0
+    total = 0
+    for _ in range(n - 1):
+        min_val, min_idx = min(
+            (min_edge[i], i) for i in range(n) if i not in in_tree
+        )
+        in_tree.add(min_idx)
+        total += min_val
+        for i in range(n):
+            if i not in in_tree:
+                min_edge[i] = min(min_edge[i], manhattan(nodes[min_idx], nodes[i]))
+    return total
+
 def astar(maze):
     start = maze.getStart()
     goal = maze.getObjectives()
