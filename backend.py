@@ -31,27 +31,32 @@ def mst_heuristic(pos, remaining):
 
 def astar(maze):
     start = maze.getStart()
-    goal = maze.getObjectives()
+    initial_remaining = frozenset(maze.getObjectives())
+    initial_state = (start, initial_remaining)
     priority_queue = []
-    heapq.heappush(priority_queue, (0, start))
-    parents = {start: (-1, -1)}
-    g_cost = {start: 0}
+    heapq.heappush(priority_queue, (0, initial_state))
+    parents = {initial_state: None}
+    g_cost = {initial_state: 0}
 
     while priority_queue:
-        _, node = heapq.heappop(priority_queue)
-        yield node
-        if node == goal[0]:
+        _, state = heapq.heappop(priority_queue)
+        pos, remaining = state
+        yield pos
+        if not remaining:
             path = []
-            while node != start:
-                path.append(node)
-                node = parents[node]
-            #path.reverse()
-            #return path
-        neighbors = maze.getNeighbors(node[0], node[1])
+            s = state
+            while s is not None:
+                path.append(s[0])
+                s = parents[s]
+            path.reverse()
+            return path
+        neighbors = maze.getNeighbors(pos[0], pos[1])
         for n in neighbors:
-            new_cost = g_cost[node] + 1
-            if n not in g_cost or new_cost < g_cost[n]:
-                g_cost[n] = new_cost
-                priority = new_cost + heuristic_1(n, goal[0])
-                heapq.heappush(priority_queue, (priority, n))
-                parents[n] = node
+            new_remaining = remaining - {n}
+            new_state = (n, new_remaining)
+            new_cost = g_cost[state] + 1
+            if new_state not in g_cost or new_cost < g_cost[new_state]:
+                g_cost[new_state] = new_cost
+                priority = new_cost + mst_heuristic(n, new_remaining)
+                heapq.heappush(priority_queue, (priority, new_state))
+                parents[new_state] = state
