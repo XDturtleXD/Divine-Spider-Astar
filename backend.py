@@ -110,3 +110,6 @@ def astar(maze: Maze) -> Generator[Pos, None, list[Pos]]:
                 priority: int = new_cost + mst_heuristic(n, new_remaining) # f_cost = g_cost + heuristic
                 heapq.heappush(priority_queue, (priority, new_state)) # push the new state with its f_cost into the priority queue
                 parents[new_state] = state # update the parent pointer for path reconstruction
+
+    # No solution exists that collects all objectives.
+    return []
