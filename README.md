@@ -13,7 +13,7 @@ The core algorithm is A\* where the heuristic is the weight of a **Minimum Spann
 | File | Role |
 |---|---|
 | `maze.py` | the `Maze` class that parses a `.txt` maze file and exposes grid info and neighbor queries |
-| `backend.py` | the search algorithm `astar(maze)`, which is a **generator** that streams explored positions and returns the final path |
+| `backend.py` | the search algorithm `get_Astar_result(maze)`, which is a **generator** that streams explored positions and returns the final path |
 | `main.py` | Example usage and test cases |
 
 
@@ -58,15 +58,15 @@ maze.isValidPath(path) # → "Valid" or an error string
 
 ---
 
-### `astar(maze)` Generator
+### `get_Astar_result(maze)` Generator
 
 ```python
-from backend import astar
+from backend import get_Astar_result
 
-gen = astar(maze)
+gen = get_Astar_result(maze)
 ```
 
-`astar` is a **Python generator**. It has two kinds of output:
+`get_Astar_result` is a **Python generator**. It has two kinds of output:
 
 1. **`yield`** — emits each `(row, col)` position as A\* explores it (use this to animate the search)
 2. **`return`** — the final shortest path as `list[(row, col)]`, retrieved via `StopIteration.value`
@@ -75,10 +75,10 @@ gen = astar(maze)
 
 ```python
 from maze import Maze
-from backend import astar
+from backend import get_Astar_result
 
 maze = Maze("maze.txt")
-gen = astar(maze)
+gen = get_Astar_result(maze)
 
 path = []
 try:
