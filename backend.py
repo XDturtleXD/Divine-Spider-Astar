@@ -94,6 +94,7 @@ def get_Astar_result(maze: Maze) -> Generator[Pos, None, list[Pos]]:
             while s is not None: # reconstruct the path by following the parent pointers back to the start
                 path.append(s[0])
                 s = parents[s]
+            path.pop()
             path.reverse() # reverse the path to get it from start to goal
             return path
 

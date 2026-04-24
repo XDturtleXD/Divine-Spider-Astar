@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          # 使用 uv 的快取功能，讓之後的執行速度飛快
+          enable-cache: true
+          version: "latest"
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        # uv sync 會根據 uv.lock 自動安裝所有需要的套件
+        run: uv sync --frozen
+
+      - name: Run Pytest
+        # 執行 A* 與 BFS 的驗證測試
+        run: uv run pytest
