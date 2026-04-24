@@ -64,12 +64,19 @@ def astar(maze: Maze) -> Generator[Pos, None, list[Pos]]:
 
     parents: dict[State, State | None] = {initial_state: None} # to reconstruct the path once we reach the goal
     g_cost: dict[State, int] = {initial_state: 0} # cost from start to this state
+    visited: set[State] = set() # states already expanded; skip stale heap entries
 
     # Main A* loop
     # We loop until there are no more states to explore (i.e. the priority queue is empty)
     while priority_queue:
         # Pop the state with the lowest f_cost (g_cost + heuristic) from the priority queue
         _, state = heapq.heappop(priority_queue)
+
+        # Skip stale heap entries: if we already expanded this state via a cheaper path, ignore it
+        if state in visited:
+            continue
+        visited.add(state)
+
         pos, remaining = state
         yield pos
 
