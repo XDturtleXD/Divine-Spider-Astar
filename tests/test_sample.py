@@ -1,9 +1,7 @@
 from backend import get_Astar_result
 from maze import Maze
 import pytest
-import tempfile
 import numpy as np
-import os
 
 SINGLE = """\
 #########
@@ -61,7 +59,7 @@ def get_astar_path(maze):
 
 class TestPathfinding:
     
-    @pytest.mark.parametrize("maze_text", [SINGLE, MULTI])
+    @pytest.mark.parametrize("maze_text", [SINGLE, MULTI, "./tests/bigMaze.txt"])
     def test_path_length_consistency(self, maze_text):
         """Check that the path length from A* is the same as the path length from BFS (for single goal)."""
         maze = make_maze(maze_text)
@@ -71,7 +69,7 @@ class TestPathfinding:
         # A* on a consistent heuristic should find the shortest path, matching BFS
         assert len(astar_path) == len(bfs_path), f"A* length {len(astar_path)} != BFS length {len(bfs_path)}"
 
-    @pytest.mark.parametrize("maze_text", [SINGLE, MULTI])
+    @pytest.mark.parametrize("maze_text", [SINGLE, MULTI, "./tests/bigMaze.txt"])
     def test_astar_reaches_goal(self, maze_text):
         """Check that the path is valid and reaches the target goal."""
         maze = make_maze(maze_text)
