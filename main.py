@@ -1,6 +1,78 @@
-def main() -> None:
-    print("Hello from divine-snakes-astar!")
+import tempfile
+import os
 
+from maze import Maze
+from backend import astar
+
+
+def make_maze(text: str) -> Maze:
+    """Write maze text to a temp file and return a Maze object."""
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
+        f.write(text)
+        fname = f.name
+    try:
+        return Maze(fname)
+    finally:
+        os.unlink(fname)
+
+
+def run(label: str, maze_text: str) -> None:
+    print(f"\n=== {label} ===")
+    maze = make_maze(maze_text)
+
+    # Print the raw maze
+    for row in maze.mazeRaw:
+        print("  " + "".join(row))
+
+    # Run A* and collect explored positions
+    gen = astar(maze)
+    explored: list = []
+    path: list = []
+    try:
+        while True:
+            pos = next(gen)
+            explored.append(pos)
+    except StopIteration as e:
+        path = e.value
+
+    print(f"  Explored : {len(explored)} states")
+    print(f"  Path len : {len(path)} steps")
+    print(f"  Path     : {path}")
+    print(f"  Valid?   : {maze.isValidPath(path)}")
+
+
+SINGLE = """\
+#########
+#H......#
+#.......#
+#......*#
+#########
+"""
+
+MULTI = """\
+#####
+#H.*#
+#####
+"""
+
+MULTI_2 = """\
+#######
+#H...##
+#*...##
+#....*#
+#######
+"""
+
+MULTI_3 = """\
+#########
+#H..*..##
+#*.....##
+#......*#
+#########
+"""
 
 if __name__ == "__main__":
-    main()
+    run("Single objective", SINGLE)
+    run("Multi objective (2 goals)", MULTI)
+    run("Multi objective (3 goals)", MULTI_2)
+    run("Multi objective (4 goals)", MULTI_3)
