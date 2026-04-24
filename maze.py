@@ -118,7 +118,7 @@ class Maze:
             return f"position must be tuple, got {type(path[0])}"
 
         if len(path[0]) != 2:
-            return f"position must be (x, y), got {path[0]}"
+            return f"position must be (row, col), got {path[0]}"
 
         # Check single hop
         for i in range(1, len(path)):
