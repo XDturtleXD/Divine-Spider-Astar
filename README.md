@@ -6,7 +6,7 @@ DSA Project Group 6. This module solves multi-objective maze problems using A\* 
 
 Given a maze with one start position (`H`) and one or more objectives (`*`), the solver finds the **shortest path that visits all objectives**, in any order.
 
-The core algorithm is A\* where the heuristic is the weight of a **Minimum Spanning Tree** (MST, built with Prim's algorithm) over the current position and all remaining objectives, giving a tight admissible lower bound and keeps the search efficient.
+The core algorithm is A\* where the heuristic is the weight of a **Minimum Spanning Tree** (MST, built with Prim's algorithm) over the current position and all remaining objectives, giving a tight admissible lower bound and keeping the search efficient.
 
 ## File Overview
 
