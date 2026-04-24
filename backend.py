@@ -56,8 +56,15 @@ def astar(maze: Maze) -> Generator[Pos, None, list[Pos]]:
     path (start → ... → last objective) via StopIteration.value.
     """
     # Initialize the priority queue with the starting position and all objectives remaining
-    start: Pos = maze.getStart()
-    initial_remaining: frozenset[Pos] = frozenset(maze.getObjectives())
+    start = maze.getStart()
+    if start is None:
+        raise ValueError("Maze is missing a start position.")
+
+    objectives = maze.getObjectives()
+    if objectives is None:
+        raise ValueError("Maze is missing objectives.")
+
+    initial_remaining: frozenset[Pos] = frozenset(objectives)
     initial_state: State = (start, initial_remaining)
     priority_queue: list[tuple[int, State]] = []
     heapq.heappush(priority_queue, (0, initial_state))
