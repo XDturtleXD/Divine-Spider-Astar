@@ -7,10 +7,6 @@ type Pos = tuple[int, int]
 type State = tuple[Pos, frozenset[Pos]]
 
 
-def heuristic_1(a: Pos, b: Pos) -> int:
-    return abs(a[0] - b[0]) + abs(a[1] - b[1])
-
-
 def manhattan(a: Pos, b: Pos) -> int:
     return abs(a[0] - b[0]) + abs(a[1] - b[1])
 
