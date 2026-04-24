@@ -2,7 +2,7 @@ import tempfile
 import os
 
 from maze import Maze
-from backend import astar
+from backend import get_Astar_result
 
 
 def make_maze(text: str) -> Maze:
@@ -25,7 +25,7 @@ def run(label: str, maze_text: str) -> None:
         print("  " + "".join(row))
 
     # Run A* and collect explored positions
-    gen = astar(maze)
+    gen = get_Astar_result(maze)
     explored: list = []
     path: list = []
     try:

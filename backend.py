@@ -44,7 +44,7 @@ def mst_heuristic(pos: Pos, remaining: frozenset[Pos]) -> int:
     return total
 
 
-def astar(maze: Maze) -> Generator[Pos, None, list[Pos]]:
+def get_Astar_result(maze: Maze) -> Generator[Pos, None, list[Pos]]:
     """
     Multi-objective A* search over the maze.
 
