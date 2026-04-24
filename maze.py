@@ -22,6 +22,7 @@ type Pos = tuple[int, int]
 
 class Maze:
     def __init__(self, filename: str) -> None:
+        """Reads in the maze file and initializes the maze representation."""
         self.__filename: str = filename
         self.__wallChar: str = '#'
         self.__startChar: str = 'H'
@@ -40,10 +41,12 @@ class Maze:
         self.cols: int = len(lines[0])
         self.mazeRaw: list[list[str]] = lines
 
+        # Check that the maze dimensions are consistent with the number of rows and columns
         if (len(self.mazeRaw) != self.rows) or (len(self.mazeRaw[0]) != self.cols):
             print("Maze dimensions incorrect")
             raise SystemExit
 
+        # Scan the maze for the start and objective positions
         for row in range(len(self.mazeRaw)):
             for col in range(len(self.mazeRaw[0])):
                 if self.mazeRaw[row][col] == self.__startChar:
@@ -87,10 +90,10 @@ class Maze:
     def getNeighbors(self, row: int, col: int) -> list[Pos]:
         """Returns a list of valid neighboring positions (i.e. up, down, left, right)"""
         possibleNeighbors: list[Pos] = [
-            (row + 1, col),
-            (row - 1, col),
-            (row, col + 1),
-            (row, col - 1)
+            (row + 1, col), # down
+            (row - 1, col), # up
+            (row, col + 1), # right
+            (row, col - 1), # left
         ]
         neighbors: list[Pos] = []
         for r, c in possibleNeighbors:
@@ -106,16 +109,16 @@ class Maze:
         otherwise returns a string describing the first rule violation encountered.
         """
         if not isinstance(path, list):
-            return "path must be list"
+            return f"path must be list, got {type(path)}"
 
         if len(path) == 0:
             return "path must not be empty"
 
         if not isinstance(path[0], tuple):
-            return "position must be tuple"
+            return f"position must be tuple, got {type(path[0])}"
 
         if len(path[0]) != 2:
-            return "position must be (x, y)"
+            return f"position must be (x, y), got {path[0]}"
 
         # Check single hop
         for i in range(1, len(path)):
@@ -123,7 +126,7 @@ class Maze:
             cur = path[i]
             dist = abs((prev[1] - cur[1]) + (prev[0] - cur[0]))
             if dist > 1:
-                return "Not single hop"
+                return f"Not single hop: {prev} -> {cur}"
 
         # Check whether it is a valid move
         for pos in path:
@@ -141,16 +144,16 @@ class Maze:
         # Check for the duplication
         if len(set(path)) != len(path):
             c = Counter(path)
-            dup_dots = [p for p in set(c.elements()) if c[p] >= 2]
+            dup_dots = [p for p in set(c.elements()) if c[p] >= 2] # find the duplicated positions
             for p in dup_dots:
-                indices = [i for i, dot in enumerate(path) if dot == p]
+                indices = [i for i, dot in enumerate(path) if dot == p] # find the indices of the duplicated positions
                 is_dup = True
                 for i in range(len(indices) - 1):
                     for dot in path[indices[i] + 1: indices[i + 1]]:
-                        if self.isObjective(dot[0], dot[1]):
+                        if self.isObjective(dot[0], dot[1]): # if there was an objective collected, it's valid
                             is_dup = False
                             break
-                if is_dup:
-                    return "Unnecessary path detected"
+                if is_dup: # if there is an objective between the duplicated positions, then it is not a valid path
+                    return f"Unnecessary path detected: {p}"
 
         return "Valid"
