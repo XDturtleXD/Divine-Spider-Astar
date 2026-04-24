@@ -48,13 +48,7 @@ def bfs(maze):
 
 def make_maze(text: str) -> Maze:
     """Write maze text to a temp file and return a Maze object."""
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
-        f.write(text)
-        fname = f.name
-    try:
-        return Maze(fname)
-    finally:
-        os.unlink(fname)
+    return Maze(text)
 
 def get_astar_path(maze):
     """Helper to extract the final path from the A* generator."""
