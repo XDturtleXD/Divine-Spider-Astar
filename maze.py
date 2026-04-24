@@ -124,7 +124,9 @@ class Maze:
         for i in range(1, len(path)):
             prev = path[i - 1]
             cur = path[i]
-            dist = abs((prev[1] - cur[1]) + (prev[0] - cur[0]))
+            dr = prev[0] - cur[0]
+            dc = prev[1] - cur[1]
+            dist = abs(dr) + abs(dc)
             if dist > 1:
                 return f"Not single hop: {prev} -> {cur}"
 
