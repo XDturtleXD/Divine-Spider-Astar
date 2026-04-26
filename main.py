@@ -1,5 +1,6 @@
-import tempfile
-import os
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent / "BE"))
 
 from maze import Maze
 from backend import get_Astar_result
