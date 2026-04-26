@@ -1,6 +1,6 @@
-![Tests Status](https://github.com/XDturtleXD/Divine-Spider-Astar/actions/workflows/tests.yml/badge.svg)
-
 # Divine Spider — A\* Backend
+
+![Tests Status](https://github.com/XDturtleXD/Divine-Spider-Astar/actions/workflows/tests.yml/badge.svg)
 
 DSA Project Group 6. This module solves multi-objective maze problems using A\* search with an MST-based heuristic.
 
@@ -13,18 +13,17 @@ The core algorithm is A\* where the heuristic is the weight of a **Minimum Spann
 ## File Overview
 
 | File | Role |
-|---|---|
+| --- | --- |
 | `maze.py` | the `Maze` class that parses a `.txt` maze file and exposes grid info and neighbor queries |
 | `backend.py` | the search algorithm `get_Astar_result(maze)`, which is a **generator** that streams explored positions and returns the final path |
 | `main.py` | Example usage and test cases |
-
 
 ## Maze File Format
 
 Plain text, using these characters:
 
 | Char | Meaning |
-|---|---|
+| --- | --- |
 | `#` | Wall |
 | `H` | Start position (exactly one) |
 | `*` | Objective / food dot (one or more) |
@@ -32,7 +31,7 @@ Plain text, using these characters:
 
 Example:
 
-```
+```plaintext
 #####
 #H.*#
 #####
@@ -106,7 +105,7 @@ except StopIteration as e:
 #### Return values
 
 | Variable | Type | Description |
-|---|---|---|
+| --- | --- | --- |
 | `pos` | `tuple[int, int]` | A grid cell explored during search — for visualizing the search frontier |
 | `path` | `list[tuple[int, int]]` | Ordered positions from start to the last objective; guaranteed optimal |
 
@@ -124,7 +123,7 @@ python3 main.py
 
 Expected output (one block per test case):
 
-```
+```plaintext
 === Single objective ===
   Explored : 21 states
   Path len : 9 steps
@@ -143,9 +142,3 @@ result = maze.isValidPath(path)
 # "Unnecessary path detected"— path backtracks without reason
 # "Last position is not goal"— path does not end on an objective
 ```
-
----
-
-## Notes
-
-- Coordinates throughout are `(row, col)`, not `(x, y)`.
