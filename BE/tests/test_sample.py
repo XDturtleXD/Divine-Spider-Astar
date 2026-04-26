@@ -1,6 +1,9 @@
+from pathlib import Path
 from backend import get_Astar_result
 from maze import Maze
 import pytest
+
+BIG_MAZE = str(Path(__file__).parent / "bigMaze.txt")
 
 # ── Maze fixtures ─────────────────────────────────────────────────────────────
 
@@ -82,7 +85,7 @@ def get_astar_path(maze):
 
 class TestPathfinding:
 
-    @pytest.mark.parametrize("maze_text", [SINGLE, MULTI, "./tests/bigMaze.txt"])
+    @pytest.mark.parametrize("maze_text", [SINGLE, MULTI, BIG_MAZE])
     def test_path_length_consistency(self, maze_text):
         """A* path length must match BFS (optimal) for single-goal mazes."""
         maze = make_maze(maze_text)
@@ -92,7 +95,7 @@ class TestPathfinding:
         assert len(astar_path) == len(bfs_path), \
             f"A* length {len(astar_path)} != BFS length {len(bfs_path)}"
 
-    @pytest.mark.parametrize("maze_text", [SINGLE, MULTI, "./tests/bigMaze.txt"])
+    @pytest.mark.parametrize("maze_text", [SINGLE, MULTI, BIG_MAZE])
     def test_astar_reaches_goal(self, maze_text):
         """A* path must be physically valid and end at a goal."""
         maze = make_maze(maze_text)
@@ -158,8 +161,8 @@ class TestMaze:
 
     def test_string_and_file_give_same_result(self):
         """Maze loaded from a file and from its string content must be equivalent."""
-        maze_from_file = Maze("./tests/bigMaze.txt")
-        with open("./tests/bigMaze.txt") as f:
+        maze_from_file = Maze(BIG_MAZE)
+        with open(BIG_MAZE) as f:
             content = f.read()
         maze_from_string = Maze(content)
 

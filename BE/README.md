@@ -8,9 +8,10 @@ DSA Project Group 6. We implemented an A\* search algorithm to solve multi-objec
 
 | File | Role |
 | --- | --- |
-| `maze.py` | the `Maze` class that parses a `.txt` maze file and exposes grid info and neighbor queries |
-| `backend.py` | the search algorithm `get_Astar_result(maze)`, which is a **generator** that streams explored positions and returns the final path |
-| `main.py` | Example usage and test cases |
+| `BE/maze.py` | the `Maze` class that parses a `.txt` maze file and exposes grid info and neighbor queries |
+| `BE/backend.py` | the search algorithm `get_Astar_result(maze)`, which is a **generator** that streams explored positions and returns the final path |
+| `BE/tests/` | pytest suite for the backend |
+| `main.py` | demo script at project root — exercises the backend end-to-end |
 
 ## Backend Overview
 
@@ -113,7 +114,7 @@ All coordinates are `(row, col)`, zero-indexed from the top-left corner.
 Requires Python 3.13+.
 
 ```bash
-python3 main.py
+uv run python main.py   # run from the project root
 ```
 
 Expected output (one block per test case):
@@ -224,4 +225,4 @@ print("Valid?", maze.isValidPath(path))
 | Multiple objectives | Two or more `*` | All `*` in path, `Valid` |
 | Goal blocked by walls | `#` surrounds `*` | `path == []` |
 | Start adjacent to goal | `H` and `*` are neighbors | `path` of length 1, `Valid` |
-| Large maze | Use `tests/bigMaze.txt` | Completes without error, `Valid` |
+| Large maze | Use `BE/tests/bigMaze.txt` | Completes without error, `Valid` |
