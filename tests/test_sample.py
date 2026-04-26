@@ -25,7 +25,7 @@ def bfs(maze):
     # Using a dictionary for parents is safer and more flexible than a fixed 1000x1000 array
     parents = {}
     parents[start] = (-1, -1)
-    
+
     while queue:
         node = queue.pop(0)
         if node == goal[0]:
@@ -35,7 +35,7 @@ def bfs(maze):
                 node = parents[node]
             path.reverse()
             return path
-        
+
         neighbors = maze.getNeighbors(node[0], node[1])
         for n in neighbors:
             if n in parents:
@@ -58,14 +58,14 @@ def get_astar_path(maze):
         return e.value
 
 class TestPathfinding:
-    
+
     @pytest.mark.parametrize("maze_text", [SINGLE, MULTI, "./tests/bigMaze.txt"])
     def test_path_length_consistency(self, maze_text):
         """Check that the path length from A* is the same as the path length from BFS (for single goal)."""
         maze = make_maze(maze_text)
         astar_path = get_astar_path(maze)
         bfs_path = bfs(maze)
-        
+
         # A* on a consistent heuristic should find the shortest path, matching BFS
         assert len(astar_path) == len(bfs_path), f"A* length {len(astar_path)} != BFS length {len(bfs_path)}"
 
@@ -75,10 +75,10 @@ class TestPathfinding:
         maze = make_maze(maze_text)
         astar_path = get_astar_path(maze)
         goals = maze.getObjectives()
-        
+
         # 1. Check if the path is physically valid (no wall jumping)
-        assert maze.isValidPath(astar_path) is "Valid", "The path returned by A* is invalid according to maze rules."
-        
+        assert maze.isValidPath(astar_path) == "Valid", "The path returned by A* is invalid according to maze rules."
+
         # 2. Check if the final position in the path is one of the objectives
         assert len(astar_path) > 0, "A* failed to find a path."
         final_pos = astar_path[-1]
