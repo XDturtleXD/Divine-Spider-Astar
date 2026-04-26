@@ -52,8 +52,9 @@ def get_Astar_result(maze: Maze) -> Generator[Pos, None, list[Pos]]:
     so revisiting a cell with a different remaining set is treated as a distinct state —
     necessary for correctness when objectives can be collected in any order.
 
-    Yields each explored position for visualization. Returns the complete
-    path (start → ... → last objective) via StopIteration.value.
+    Yields each explored position for visualization. Returns the path
+    (first step after start → ... → last objective) via StopIteration.value.
+    The start position itself is excluded from the returned path.
     """
     # Initialize the priority queue with the starting position and all objectives remaining
     start = maze.getStart()
