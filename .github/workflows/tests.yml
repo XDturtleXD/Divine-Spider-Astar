@@ -21,7 +21,7 @@ jobs:
           version: "latest"
 
       - name: Set up Python
-        run: uv python install 3.12
+        run: uv python install 3.13
 
       - name: Install dependencies
         # uv sync 會根據 uv.lock 自動安裝所有需要的套件
