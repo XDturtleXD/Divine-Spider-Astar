@@ -55,23 +55,7 @@ class Maze:
                     self.__start = (row, col)
                 elif self.mazeRaw[row][col] == self.__objectiveChar:
                     self.__objective.append((row, col))
-    def loadFromString(self, lines: str) -> None:
-        self.rows: int = len(lines)
-        self.cols: int = len(lines[0])
-        self.mazeRaw: list[list[str]] = lines
 
-        # Check that the maze dimensions are consistent with the number of rows and columns
-        if (len(self.mazeRaw) != self.rows) or (len(self.mazeRaw[0]) != self.cols):
-            print("Maze dimensions incorrect")
-            raise SystemExit
-
-        # Scan the maze for the start and objective positions
-        for row in range(len(self.mazeRaw)):
-            for col in range(len(self.mazeRaw[0])):
-                if self.mazeRaw[row][col] == self.__startChar:
-                    self.__start = (row, col)
-                elif self.mazeRaw[row][col] == self.__objectiveChar:
-                    self.__objective.append((row, col))
     def isWall(self, row: int, col: int) -> bool:
         """Returns True if the given position is the location of a wall"""
         return self.mazeRaw[row][col] == self.__wallChar

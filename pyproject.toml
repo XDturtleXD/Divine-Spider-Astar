@@ -15,4 +15,4 @@ dev = ["pytest>=9.0.3"]
 [tool.pytest.ini_options]
 addopts = "-s -v --tb=short"
 testpaths = ["tests"]
-pythonpath = ["src", "."]
+pythonpath = ["."]
