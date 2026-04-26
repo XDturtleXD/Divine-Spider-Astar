@@ -1,5 +1,6 @@
 {
     "python.analysis.extraPaths": [
+        "BE",
         "."
     ],
     "python.analysis.includeExtraPathSymbolsInSymbolSearch": true
