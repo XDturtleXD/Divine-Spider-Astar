@@ -2,13 +2,7 @@
 
 ![Tests Status](https://github.com/XDturtleXD/Divine-Spider-Astar/actions/workflows/tests.yml/badge.svg)
 
-DSA Project Group 6. This module solves multi-objective maze problems using A\* search with an MST-based heuristic.
-
-## What It Does
-
-Given a maze with one start position (`H`) and one or more objectives (`*`), the solver finds the **shortest path that visits all objectives**, in any order.
-
-The core algorithm is A\* where the heuristic is the weight of a **Minimum Spanning Tree** (MST, built with Prim's algorithm) over the current position and all remaining objectives, giving a tight admissible lower bound and keeping the search efficient.
+DSA Project Group 6. We implemented an A\* search algorithm to solve multi-objective maze problems, where the goal is to find the shortest path that visits all objectives in a maze. The heuristic used is based on the weight of a Minimum Spanning Tree (MST) over the current position and remaining objectives, which provides an admissible lower bound for the search.
 
 ## File Overview
 
@@ -18,7 +12,15 @@ The core algorithm is A\* where the heuristic is the weight of a **Minimum Spann
 | `backend.py` | the search algorithm `get_Astar_result(maze)`, which is a **generator** that streams explored positions and returns the final path |
 | `main.py` | Example usage and test cases |
 
-## Maze File Format
+## Backend Overview
+
+This module solves multi-objective maze problems using A\* search with an MST-based heuristic. It provides a `Maze` class for parsing maze files and a generator function `get_Astar_result(maze)` that yields explored positions and returns the optimal path. The backend is designed to be used with a frontend that can visualize the search process and the resulting path.
+
+Given a maze with one start position (`H`) and one or more objectives (`*`), the solver finds the **shortest path that visits all objectives**, in any order.
+
+The core algorithm is A\* where the heuristic is the weight of a **Minimum Spanning Tree** (MST, built with Prim's algorithm) over the current position and all remaining objectives, giving a tight admissible lower bound and keeping the search efficient.
+
+### Maze File Format
 
 Plain text, using these characters:
 
@@ -36,8 +38,6 @@ Example:
 #H.*#
 #####
 ```
-
----
 
 ## Interface for Frontend
 
@@ -57,13 +57,10 @@ maze.getObjectives()   # → list[(row, col)]: all objective positions
 maze.isValidPath(path) # → "Valid" or an error string
 ```
 
----
-
 ### `get_Astar_result(maze)` Generator
 
 ```python
 from backend import get_Astar_result
-
 gen = get_Astar_result(maze)
 ```
 
@@ -110,8 +107,6 @@ except StopIteration as e:
 | `path` | `list[tuple[int, int]]` | Ordered positions from start to the last objective; guaranteed optimal |
 
 All coordinates are `(row, col)`, zero-indexed from the top-left corner.
-
----
 
 ## Running the Example
 
