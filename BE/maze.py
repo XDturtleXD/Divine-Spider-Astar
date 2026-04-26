@@ -39,8 +39,15 @@ class Maze:
         lines = list(filter(lambda x: not re.match(r'^\s*$', x), lines))
         lines = [list(line.strip('\n')) for line in lines]
 
+        if not lines:
+            raise ValueError("Maze input is empty")
+
+        expected_cols = len(lines[0])
+        if any(len(line) != expected_cols for line in lines):
+            raise ValueError("Maze rows must all have the same length")
+
         self.rows: int = len(lines)
-        self.cols: int = len(lines[0])
+        self.cols: int = expected_cols
         self.mazeRaw: list[list[str]] = lines
 
         # Check that the maze dimensions are consistent with the number of rows and columns
