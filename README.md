@@ -1,6 +1,6 @@
 ![Tests Status](https://github.com/XDturtleXD/Divine-Spider-Astar/actions/workflows/tests.yml/badge.svg)
 
-# Divine Snakes — A\* Backend
+# Divine Spider — A\* Backend
 
 DSA Project Group 6. This module solves multi-objective maze problems using A\* search with an MST-based heuristic.
 
