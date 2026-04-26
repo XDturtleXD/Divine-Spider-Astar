@@ -66,6 +66,8 @@ class Maze:
 
     def getStart(self) -> Pos:
         """Returns the starting position of the maze"""
+        if self.__start is None:
+            raise ValueError("Maze has no start position")
         return self.__start
 
     def setStart(self, start: Pos) -> None:
