@@ -52,8 +52,7 @@ class Maze:
 
         # Check that the maze dimensions are consistent with the number of rows and columns
         if (len(self.mazeRaw) != self.rows) or (len(self.mazeRaw[0]) != self.cols):
-            print("Maze dimensions incorrect")
-            raise SystemExit
+            raise ValueError("Maze dimensions incorrect")
 
         # Scan the maze for the start and objective positions
         for row in range(len(self.mazeRaw)):
