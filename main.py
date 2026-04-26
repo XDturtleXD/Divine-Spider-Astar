@@ -7,7 +7,7 @@ from backend import get_Astar_result
 
 
 def make_maze(text: str) -> Maze:
-    """Write maze text to a temp file and return a Maze object."""
+    """Create and return a Maze object from the provided maze text."""
     return Maze(text)
 
 
