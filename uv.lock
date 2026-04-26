@@ -18,6 +18,10 @@ source = { virtual = "." }
 dependencies = [
     { name = "numpy" },
     { name = "pygame" },
+]
+
+[package.dev-dependencies]
+dev = [
     { name = "pytest" },
 ]
 
@@ -25,8 +29,10 @@ dependencies = [
 requires-dist = [
     { name = "numpy", specifier = ">=2.4.4" },
     { name = "pygame", specifier = ">=2.6.1" },
-    { name = "pytest", specifier = ">=9.0.3" },
 ]
+
+[package.metadata.requires-dev]
+dev = [{ name = "pytest", specifier = ">=9.0.3" }]
 
 [[package]]
 name = "iniconfig"
