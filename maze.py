@@ -16,24 +16,26 @@ a representation of the maze that is exposed through a simple interface.
 import re
 import copy
 from collections import Counter
-
+import os
 type Pos = tuple[int, int]
 
 
 class Maze:
     def __init__(self, filename: str) -> None:
         """Reads in the maze file and initializes the maze representation."""
-        self.__filename: str = filename
+        self.__filename: str = ''
         self.__wallChar: str = '#'
         self.__startChar: str = 'H'
         self.__objectiveChar: str = '*'
         self.__start: Pos | None = None
         self.__objective: list[Pos] = []
         self.__states_explored: int = 0
-
-        with open(filename) as f:
-            lines = f.readlines()
-
+        if os.path.exists(filename):
+            self.__filename = filename
+            with open(filename) as f:
+                lines = f.readlines()
+        else:
+            lines = filename.split('\n')
         lines = list(filter(lambda x: not re.match(r'^\s*$', x), lines))
         lines = [list(line.strip('\n')) for line in lines]
 

@@ -7,13 +7,7 @@ from backend import get_Astar_result
 
 def make_maze(text: str) -> Maze:
     """Write maze text to a temp file and return a Maze object."""
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
-        f.write(text)
-        fname = f.name
-    try:
-        return Maze(fname)
-    finally:
-        os.unlink(fname)
+    return Maze(text)
 
 
 def run(label: str, maze_text: str) -> None:
@@ -23,7 +17,6 @@ def run(label: str, maze_text: str) -> None:
     # Print the raw maze
     for row in maze.mazeRaw:
         print("  " + "".join(row))
-
     # Run A* and collect explored positions
     gen = get_Astar_result(maze)
     explored: list = []
@@ -34,7 +27,6 @@ def run(label: str, maze_text: str) -> None:
             explored.append(pos)
     except StopIteration as e:
         path = e.value
-
     print(f"  Explored : {len(explored)} states")
     print(f"  Path len : {len(path)} steps")
     print(f"  Path     : {path}")

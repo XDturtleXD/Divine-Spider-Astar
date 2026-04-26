@@ -1,5 +1,5 @@
 [project]
-name = "divine-snakes-astar"
+name = "divine_spider_astar"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
@@ -8,3 +8,11 @@ dependencies = [
     "numpy>=2.4.4",
     "pygame>=2.6.1",
 ]
+
+[dependency-groups]
+dev = ["pytest>=9.0.3"]
+
+[tool.pytest.ini_options]
+addopts = "-s -v --tb=short"
+testpaths = ["tests"]
+pythonpath = ["."]
