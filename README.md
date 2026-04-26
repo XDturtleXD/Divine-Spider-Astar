@@ -51,10 +51,10 @@ maze = Maze("path/to/maze.txt")
 Useful methods:
 
 ```python
-maze.getDimensions()   # → (rows, cols): grid size
-maze.getStart()        # → (row, col): start position
-maze.getObjectives()   # → list[(row, col)]: all objective positions
-maze.isValidPath(path) # → "Valid" or an error string
+maze.getDimensions()   # -> (rows, cols): grid size
+maze.getStart()        # -> (row, col): start position
+maze.getObjectives()   # -> list[(row, col)]: all objective positions
+maze.isValidPath(path) # -> "Valid" or an error string
 ```
 
 ### `get_Astar_result(maze)` Generator
@@ -126,8 +126,6 @@ Expected output (one block per test case):
   Valid?   : Valid
 ```
 
----
-
 ## Validating a Path
 
 ```python
@@ -137,3 +135,93 @@ result = maze.isValidPath(path)
 # "Unnecessary path detected"— path backtracks without reason
 # "Last position is not goal"— path does not end on an objective
 ```
+
+> **Note:** The returned path **excludes the start position** (`H`) and **includes all objective positions** (`*`). `path[0]` is the first step taken, `path[-1]` is the last objective reached.
+
+## QA Testing Guide
+
+### Prerequisites
+
+- Python 3.13+
+- [uv](https://docs.astral.sh/uv/) — install with `curl -LsSf https://astral.sh/uv/install.sh | sh`
+
+### 1. Environment Setup
+
+```bash
+git clone <repo-url>
+cd Divine-Spider-Astar
+uv sync        # installs all runtime and dev dependencies from uv.lock
+```
+
+### 2. Automated Test Suite
+
+```bash
+uv run pytest
+```
+
+Expected: **22 passed**. The suite covers:
+
+| Test class | What it verifies |
+| --- | --- |
+| `TestPathfinding` | A\* returns an optimal path (matches BFS length) and ends at a goal — tested on small, medium, and large single-goal mazes |
+| `TestMultiGoal` | A\* visits **every** objective in a two-goal maze and ends at a goal |
+| `TestUnreachable` | A\* returns `[]` when the goal is walled off with no path |
+| `TestMaze` | `Maze` correctly parses start, objectives, dimensions, and neighbor counts; loading from a file and from a string give identical results |
+| `TestIsValidPath` | `isValidPath` correctly rejects: empty path, path through a wall, path that skips a goal, path that doesn't end at a goal, non-consecutive steps |
+
+### 3. Manual Smoke Test
+
+```bash
+uv run python main.py
+```
+
+Each test case should print a block like:
+
+```plaintext
+=== <label> ===
+  Explored : <N> states
+  Path len : <N> steps
+  Path     : [(row, col), ...]
+  Valid?   : Valid
+```
+
+**Pass criterion:** every `Valid?` line must print `Valid`.
+
+### 4. Custom Maze Testing
+
+Create a `.txt` maze file, then run:
+
+```python
+from maze import Maze
+from backend import get_Astar_result
+
+maze = Maze("your_maze.txt")
+gen = get_Astar_result(maze)
+explored, path = [], []
+try:
+    while True:
+        explored.append(next(gen))
+except StopIteration as e:
+    path = e.value
+
+print("Explored:", len(explored), "states")
+print("Path:", path)
+print("Valid?", maze.isValidPath(path))
+```
+
+**What to verify:**
+
+- `Valid?` prints `Valid`
+- `path` is non-empty (only `[]` when the goal is genuinely unreachable)
+- Every `*` position appears in `path`
+- `path[-1]` is the position of the last objective
+
+### 5. Edge Case Checklist
+
+| Scenario | How to set it up | Expected result |
+| --- | --- | --- |
+| Single objective, open maze | One `*`, no dead ends | Optimal path, `Valid` |
+| Multiple objectives | Two or more `*` | All `*` in path, `Valid` |
+| Goal blocked by walls | `#` surrounds `*` | `path == []` |
+| Start adjacent to goal | `H` and `*` are neighbors | `path` of length 1, `Valid` |
+| Large maze | Use `tests/bigMaze.txt` | Completes without error, `Valid` |
