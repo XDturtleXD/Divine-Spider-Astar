@@ -86,6 +86,7 @@ def get_Astar_result(maze: Maze) -> Generator[Pos, None, list[Pos]]:
         visited.add(state)
 
         pos, remaining = state
+        maze.incrementStatesExplored()
         yield pos
 
         # If there are no remaining objectives, we have found a path to collect them all
@@ -100,7 +101,7 @@ def get_Astar_result(maze: Maze) -> Generator[Pos, None, list[Pos]]:
             return path
 
         # For each valid neighboring position,
-        for n in maze.getNeighbors(pos[0], pos[1]):
+        for n in maze._getNeighbors(pos[0], pos[1]):
             new_remaining: frozenset[Pos] = remaining - {n} # if n is an objective, remove it from the remaining set
             new_state: State = (n, new_remaining) # the new state is the neighbor position and the updated remaining objectives
             new_cost: int = g_cost[state] + 1 # the cost to move to a neighbor is always 1

@@ -97,7 +97,7 @@ class Maze:
         """Checks if the agent can move to the given position (i.e. it's in bounds and not a wall)"""
         return row >= 0 and row < self.rows and col >= 0 and col < self.cols and not self.isWall(row, col)
 
-    def getNeighbors(self, row: int, col: int) -> list[Pos]:
+    def _getNeighbors(self, row: int, col: int) -> list[Pos]:
         """Returns a list of valid neighboring positions (i.e. up, down, left, right)"""
         possibleNeighbors: list[Pos] = [
             (row + 1, col), # down
@@ -109,8 +109,10 @@ class Maze:
         for r, c in possibleNeighbors:
             if self.isValidMove(r, c):
                 neighbors.append((r, c))
-        self.__states_explored += 1
         return neighbors
+
+    def incrementStatesExplored(self) -> None:
+        self.__states_explored += 1
 
     def isValidPath(self, path: list[Pos]) -> str:
         """
