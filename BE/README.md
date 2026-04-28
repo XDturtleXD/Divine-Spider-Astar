@@ -87,9 +87,16 @@ except StopIteration as e:
     path = e.value         # list[(row, col)]: the complete optimal path
 ```
 
-#### Full usage (explored positions + path)
+#### Full usage (explored positions + path + validation)
 
 ```python
+from maze import Maze
+from backend import get_Astar_result
+
+maze = Maze("maze.txt")
+gen = get_Astar_result(maze)
+
+# Step 1: stream explored positions for search animation
 explored = []
 path = []
 try:
@@ -97,15 +104,30 @@ try:
         pos = next(gen)    # (row, col) of each node A* expands
         explored.append(pos)
 except StopIteration as e:
-    path = e.value
+    path = e.value         # list[(row, col)]: the complete optimal path
+
+# Step 2: validate — determines how the frontend should render the result
+result = maze.isValidPath(path)
+if result == "Valid":
+    pass  # render success state
+else:
+    pass  # render error state; result contains a description of the violation
 ```
+
+Expected flow:
+
+1. Frontend constructs the maze and calls into the backend.
+2. For each yielded `pos`, the frontend animates the search frontier.
+3. On `StopIteration`, `path` is the optimal route — render the solution path.
+4. `isValidPath(path)` confirms the path is sound before committing to a success render; an empty `path` (`[]`) means the goal is unreachable.
 
 #### Return values
 
 | Variable | Type | Description |
 | --- | --- | --- |
 | `pos` | `tuple[int, int]` | A grid cell explored during search — for visualizing the search frontier |
-| `path` | `list[tuple[int, int]]` | Ordered positions from start to the last objective; guaranteed optimal |
+| `path` | `list[tuple[int, int]]` | Ordered positions from start to the last objective; `[]` if the goal is unreachable |
+| `result` | `str` | `"Valid"` on success; a violation description string otherwise |
 
 All coordinates are `(row, col)`, zero-indexed from the top-left corner.
 
