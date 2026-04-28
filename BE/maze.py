@@ -19,6 +19,11 @@ from collections import Counter
 import os
 type Pos = tuple[int, int]
 
+MAX_ROWS = 100
+MAX_COLS = 100
+MAX_OBJECTIVES = 10
+_VALID_CHARS = frozenset('#.H*')
+
 
 class Maze:
     def __init__(self, filename: str) -> None:
@@ -46,6 +51,16 @@ class Maze:
         if any(len(line) != expected_cols for line in lines):
             raise ValueError("Maze rows must all have the same length")
 
+        if len(lines) > MAX_ROWS:
+            raise ValueError(f"Maze exceeds maximum row limit of {MAX_ROWS} (got {len(lines)})")
+        if expected_cols > MAX_COLS:
+            raise ValueError(f"Maze exceeds maximum column limit of {MAX_COLS} (got {expected_cols})")
+
+        for r, line in enumerate(lines):
+            for c, ch in enumerate(line):
+                if ch not in _VALID_CHARS:
+                    raise ValueError(f"Invalid character {ch!r} at ({r}, {c})")
+
         self.rows: int = len(lines)
         self.cols: int = expected_cols
         self.mazeRaw: list[list[str]] = lines
@@ -55,12 +70,26 @@ class Maze:
             raise ValueError("Maze dimensions incorrect")
 
         # Scan the maze for the start and objective positions
+        start_count = 0
         for row in range(len(self.mazeRaw)):
             for col in range(len(self.mazeRaw[0])):
                 if self.mazeRaw[row][col] == self.__startChar:
                     self.__start = (row, col)
+                    start_count += 1
                 elif self.mazeRaw[row][col] == self.__objectiveChar:
                     self.__objective.append((row, col))
+
+        if start_count == 0:
+            raise ValueError("Maze has no start position ('H')")
+        if start_count > 1:
+            raise ValueError(f"Maze has {start_count} start positions; exactly 1 is required")
+        if not self.__objective:
+            raise ValueError("Maze has no objectives ('*')")
+        if len(self.__objective) > MAX_OBJECTIVES:
+            raise ValueError(
+                f"Maze exceeds maximum objective limit of {MAX_OBJECTIVES} "
+                f"(got {len(self.__objective)})"
+            )
 
     def isWall(self, row: int, col: int) -> bool:
         """Returns True if the given position is the location of a wall"""
@@ -97,7 +126,7 @@ class Maze:
         """Checks if the agent can move to the given position (i.e. it's in bounds and not a wall)"""
         return row >= 0 and row < self.rows and col >= 0 and col < self.cols and not self.isWall(row, col)
 
-    def _getNeighbors(self, row: int, col: int) -> list[Pos]:
+    def getNeighbors(self, row: int, col: int) -> list[Pos]:
         """Returns a list of valid neighboring positions (i.e. up, down, left, right)"""
         possibleNeighbors: list[Pos] = [
             (row + 1, col), # down
@@ -111,7 +140,7 @@ class Maze:
                 neighbors.append((r, c))
         return neighbors
 
-    def incrementStatesExplored(self) -> None:
+    def _incrementStatesExplored(self) -> None:
         self.__states_explored += 1
 
     def isValidPath(self, path: list[Pos]) -> str:
