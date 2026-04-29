@@ -1,5 +1,5 @@
 [project]
-name = "divine-snakes-astar"
+name = "divine-spider-astar"
 version = "0.1.0"
 description = "A* homework plus independent snake scene renderer"
 requires-python = ">=3.10"
