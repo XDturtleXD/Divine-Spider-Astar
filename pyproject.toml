@@ -16,3 +16,6 @@ dev = ["pytest>=9.0.3"]
 addopts = "-s -v --tb=short"
 testpaths = ["BE/tests"]
 pythonpath = ["BE", "."]
+
+[tool.uv]
+package = false

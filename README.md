@@ -41,4 +41,3 @@ uv run python main.py
 ```bash
 uv run pytest
 ```
-
