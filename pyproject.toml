@@ -1,21 +1,11 @@
 [project]
-name = "divine_spider_astar"
+name = "divine-snakes-astar"
 version = "0.1.0"
-description = "Add your description here"
-readme = "README.md"
-requires-python = ">=3.13"
+description = "A* homework plus independent snake scene renderer"
+requires-python = ">=3.10"
 dependencies = [
-    "numpy>=2.4.4",
-    "pygame>=2.6.1",
+    "pygame-ce",
 ]
-
-[dependency-groups]
-dev = ["pytest>=9.0.3"]
-
-[tool.pytest.ini_options]
-addopts = "-s -v --tb=short"
-testpaths = ["BE/tests"]
-pythonpath = ["BE", "."]
 
 [tool.uv]
 package = false
