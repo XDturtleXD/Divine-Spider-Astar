@@ -87,7 +87,7 @@ class FrontendState:
         if cell in self.snacks:
             return
         if len(self.snacks) >= MAX_SNACKS:
-            self.set_toast("Snack limit reached (5/5).", now_ms)
+            self.set_toast(f"Snack limit reached ({MAX_SNACKS}/{MAX_SNACKS}).", now_ms)
             return
         self.snacks.add(cell)
 
