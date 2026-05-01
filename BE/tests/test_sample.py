@@ -213,6 +213,22 @@ class TestIsValidPath:
         # Teleports from start directly to goal — Manhattan distance 8
         assert maze.isValidPath([(1, 1), (3, 7)]) != "Valid"
 
+    def test_path_not_a_list(self):
+        assert make_maze(SINGLE).isValidPath("not a list") != "Valid"
+
+    def test_path_position_not_tuple(self):
+        assert make_maze(SINGLE).isValidPath([1, 2]) != "Valid"
+
+    def test_path_position_wrong_length(self):
+        assert make_maze(SINGLE).isValidPath([(1,)]) != "Valid"
+
+    def test_path_with_unnecessary_revisit(self):
+        maze = make_maze(SINGLE)
+        # Revisits (1,2) with no objective collected between the two visits
+        path = [(1,2), (1,1), (1,2), (1,3), (1,4), (1,5), (1,6), (1,7), (2,7), (3,7)]
+        assert maze.isValidPath(path) != "Valid"
+
+
 # ── Maze constructor input validation ─────────────────────────────────────────
 
 class TestMazeValidation:
