@@ -212,3 +212,51 @@ class TestIsValidPath:
         maze = make_maze(SINGLE)
         # Teleports from start directly to goal — Manhattan distance 8
         assert maze.isValidPath([(1, 1), (3, 7)]) != "Valid"
+
+# ── Maze constructor input validation ─────────────────────────────────────────
+
+class TestMazeValidation:
+
+    def test_empty_input(self):
+        with pytest.raises(ValueError, match="empty"):
+            Maze("")
+
+    def test_jagged_rows(self):
+        with pytest.raises(ValueError, match="same length"):
+            Maze("#####\n#H.*##\n#####\n")
+
+    def test_too_many_rows(self):
+        # 101 rows: border + H-row + *-row + 98 more border rows
+        body = "###\n" + "#H#\n" + "#*#\n" + "###\n" * 98
+        with pytest.raises(ValueError, match="row limit"):
+            Maze(body)
+
+    def test_too_many_cols(self):
+        # 101-column maze — one column over MAX_COLS
+        wide = "#" * 101
+        inner = "#H" + "." * 97 + "*#"   # 2 + 97 + 2 = 101 chars
+        with pytest.raises(ValueError, match="column limit"):
+            Maze(f"{wide}\n{inner}\n{wide}\n")
+
+    def test_invalid_char(self):
+        with pytest.raises(ValueError, match="Invalid character"):
+            Maze("#####\n#HX*#\n#####\n")
+
+    def test_no_start(self):
+        with pytest.raises(ValueError, match="no start"):
+            Maze("#####\n#..*#\n#####\n")
+
+    def test_multiple_starts(self):
+        with pytest.raises(ValueError, match="start positions"):
+            Maze("#####\n#HH*#\n#####\n")
+
+    def test_no_objective(self):
+        with pytest.raises(ValueError, match="no objectives"):
+            Maze("#####\n#H..#\n#####\n")
+
+    def test_too_many_objectives(self):
+        # 11 objectives — one over MAX_OBJECTIVES (10)
+        inner = "#H" + "*" * 11 + "#"   # 14 chars
+        border = "#" * 14
+        with pytest.raises(ValueError, match="objective limit"):
+            Maze(f"{border}\n{inner}\n{border}\n")
