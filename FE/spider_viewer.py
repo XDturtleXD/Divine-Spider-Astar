@@ -13,8 +13,8 @@ import pygame
 
 from backend_adapter import BackendAdapter, SolveResult
 from frontend_state import AppPhase, FrontendState, PlacementTool
-from snake_render import Grid, SnakeRenderHandler, UiRects
-from snake_scene import BOARD_COLS, BOARD_ROWS
+from spider_render import Grid, SpiderRenderHandler, UiRects
+from spider_scene import BOARD_COLS, BOARD_ROWS
 
 
 def parse_args() -> argparse.Namespace:
@@ -113,7 +113,7 @@ def main() -> None:
     state = FrontendState()
 
     grid = Grid(BOARD_ROWS, BOARD_COLS)
-    renderer = SnakeRenderHandler(args.assets_dir, grid)
+    renderer = SpiderRenderHandler(args.assets_dir, grid)
     _, ui_rects = renderer.apply_layout(surface)
     elapsed_for_step = 0.0
 

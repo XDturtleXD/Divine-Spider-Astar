@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 import tempfile
 
-from snake_scene import Position, build_maze_text
+from spider_scene import Position, build_maze_text
 
 
 @dataclass(frozen=True)

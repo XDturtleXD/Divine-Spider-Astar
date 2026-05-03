@@ -8,7 +8,7 @@ from pathlib import Path
 import pygame
 
 from frontend_state import AppPhase, FrontendState, PlacementTool
-from snake_scene import MAX_SNACKS, Position
+from spider_scene import MAX_SNACKS, Position
 
 
 # One tile ring around playable cells (indices -1 … rows inclusive).
@@ -111,7 +111,7 @@ class UiRects:
     reset_button: pygame.Rect
 
 
-class SnakeRenderHandler:
+class SpiderRenderHandler:
     """Draw scene and controls in a stable order."""
 
     _MARGIN_SIDE = 8

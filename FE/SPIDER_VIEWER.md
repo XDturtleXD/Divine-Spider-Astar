@@ -39,7 +39,7 @@ It supports:
 
 ## Modules
 
-- `snake_viewer.py`
+- `spider_viewer.py`
   - app entrypoint and single main loop
   - event handling for placement/buttons
   - playback animation timing (`--step-ms`)
@@ -47,10 +47,10 @@ It supports:
   - app phase and placement tool enums
   - board placement/removal guards
   - toast message and playback indices for exploration/path animation (`PlaybackState` holds lists + indices; does not mirror `validation_result` from the backend)
-- `snake_scene.py`
+- `spider_scene.py`
   - `BOARD_ROWS` / `BOARD_COLS` (`10`), `MAX_SNACKS` (`5`), `Position` alias
   - `build_maze_text(...)` for feeding the real backend adapter
-- `snake_render.py`
+- `spider_render.py`
   - `compute_window_layout(surface)` splits the window into an upper rect (play field) and a bottom `button_strip`; calls `Grid.fit_square_cells_in_rect(play_rect)` so the grid + one-tile border fits with **square** cells
   - `apply_layout(surface)` returns `(WindowLayout, UiRects)`; `WindowLayout` currently only carries `button_strip` (play geometry lives on `Grid`)
   - square cell count for layout is `(rows + 2) × (cols + 2)` (`VISIBLE_EXTRA_CELLS = 2`) so `bolderTile.png` ring is sized with the board
@@ -89,13 +89,13 @@ The viewer copies explored/path into `PlaybackState` for stepping animation; **`
 From `Frontend/`:
 
 ```bash
-uv run python snake_viewer.py
+uv run python spider_viewer.py
 ```
 
 From repository root (same app):
 
 ```bash
-uv run python Frontend/snake_viewer.py
+uv run python FE/spider_viewer.py
 ```
 
 

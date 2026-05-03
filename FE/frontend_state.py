@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum
 
-from snake_scene import MAX_SNACKS, Position
+from spider_scene import MAX_SNACKS, Position
 
 
 class AppPhase(str, Enum):
