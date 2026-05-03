@@ -1,4 +1,4 @@
-"""Interactive spider viewer with backend/simulation adapters."""
+"""Interactive spider viewer."""
 
 from __future__ import annotations
 
@@ -11,9 +11,8 @@ from pathlib import Path
 
 import pygame
 
-from backend_adapter import RealBackendAdapter, SolveResult
+from backend_adapter import BackendAdapter, SolveResult
 from frontend_state import AppPhase, FrontendState, PlacementTool
-from simulation_backend_adapter import SimulationBackendAdapter, SimulationScenario
 from snake_render import Grid, SnakeRenderHandler, UiRects
 from snake_scene import BOARD_COLS, BOARD_ROWS
 
@@ -25,30 +24,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--fps", type=int, default=60, help="Render FPS")
     parser.add_argument("--step-ms", type=int, default=90, help="Animation step interval (ms)")
     parser.add_argument(
-        "--backend-mode",
-        choices=["real", "simulation"],
-        default="simulation",
-        help="Use backend integration or local simulation adapter",
-    )
-    parser.add_argument(
-        "--simulation-scenario",
-        choices=[s.value for s in SimulationScenario],
-        default=SimulationScenario.VALID.value,
-        help="Simulation fixture when backend-mode is simulation",
-    )
-    parser.add_argument(
         "--assets-dir",
         type=str,
         default=str(Path(__file__).parent / "assets"),
         help="Directory containing frontend assets",
     )
     return parser.parse_args()
-
-
-def resolve_adapter(args: argparse.Namespace):
-    if args.backend_mode == "real":
-        return RealBackendAdapter()
-    return SimulationBackendAdapter(SimulationScenario(args.simulation_scenario))
 
 
 def apply_solve_result(state: FrontendState, result: SolveResult) -> None:
@@ -128,7 +109,7 @@ def main() -> None:
 
     surface = pygame.display.set_mode((args.width, args.height), pygame.RESIZABLE)
     clock = pygame.time.Clock()
-    adapter = resolve_adapter(args)
+    adapter = BackendAdapter()
     state = FrontendState()
 
     grid = Grid(BOARD_ROWS, BOARD_COLS)

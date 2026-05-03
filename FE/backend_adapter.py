@@ -1,4 +1,4 @@
-"""Shared solve contract + real backend adapter."""
+"""Solver contract + backend adapter."""
 
 from __future__ import annotations
 
@@ -17,11 +17,6 @@ class SolveResult:
 
 
 class BackendAdapter:
-    def solve(self, rows: int, cols: int, spider: Position, snacks: set[Position]) -> SolveResult:
-        raise NotImplementedError
-
-
-class RealBackendAdapter(BackendAdapter):
     """Calls BE `Maze` + `get_Astar_result` contract."""
 
     def solve(self, rows: int, cols: int, spider: Position, snacks: set[Position]) -> SolveResult:
@@ -29,7 +24,7 @@ class RealBackendAdapter(BackendAdapter):
         explored_positions: list[Position] = []
         path: list[Position] = []
 
-        # Imported lazily so simulation mode can run independently.
+        # Imported lazily.
         from backend import get_Astar_result  # type: ignore
         from maze import Maze  # type: ignore
 
