@@ -32,13 +32,6 @@ def fit_surface_to_rect(surface: pygame.Surface, target: pygame.Rect) -> pygame.
     return pygame.transform.scale(surface, (nw, nh))
 
 
-def draw_tint_overlay(surface: pygame.Surface, rect: pygame.Rect, rgb: tuple[int, int, int], alpha: int) -> None:
-    """Draw a semi-transparent tint overlay over a rect."""
-    overlay = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
-    overlay.fill((*rgb, alpha))
-    surface.blit(overlay, rect)
-
-
 class SpiderAssets:
     """Loads, trims, and scales sprites for the spider grid renderer."""
 
@@ -64,14 +57,14 @@ class SpiderAssets:
         self.trimmed_max_height = max(s.get_height() for s in self.trimmed_buttons)
         self.trimmed_max_width = max(s.get_width() for s in self.trimmed_buttons)
 
-        self.border_tile: pygame.Surface | None = None
-        self.ground_tile: pygame.Surface | None = None
-        self.snack_tile: pygame.Surface | None = None
-        self.spider_tile: pygame.Surface | None = None
-        self.run_button_surface: pygame.Surface | None = None
-        self.reset_button_surface: pygame.Surface | None = None
-        self.snack_button_surface: pygame.Surface | None = None
-        self.spider_button_surface: pygame.Surface | None = None
+        self.border_tile = self.src_border
+        self.ground_tile = self.src_ground
+        self.snack_tile = self.src_snack
+        self.spider_tile = self.src_spider
+        self.run_button_surface = self.btn_run_trim
+        self.reset_button_surface = self.btn_reset_trim
+        self.snack_button_surface = self.btn_snack_trim
+        self.spider_button_surface = self.btn_spider_trim
 
     def reload_scaled(
         self,
@@ -101,54 +94,3 @@ class SpiderAssets:
         self.snack_button_surface = fit_surface_to_rect(self.btn_snack_trim, slot_rect)
         self.spider_button_surface = fit_surface_to_rect(self.btn_spider_trim, slot_rect)
 
-    def draw_border_tile(self, surface: pygame.Surface, dest: pygame.Rect) -> None:
-        assert self.border_tile
-        surface.blit(self.border_tile, dest)
-
-    def draw_ground_tile(self, surface: pygame.Surface, dest: pygame.Rect) -> None:
-        assert self.ground_tile
-        surface.blit(self.ground_tile, dest)
-
-    def draw_snack_tile(self, surface: pygame.Surface, dest: pygame.Rect) -> None:
-        assert self.snack_tile
-        surface.blit(self.snack_tile, dest)
-
-    def draw_spider_tile(self, surface: pygame.Surface, dest: pygame.Rect) -> None:
-        assert self.spider_tile
-        surface.blit(self.spider_tile, dest)
-
-    def draw_spider_button(self, surface: pygame.Surface, rect: pygame.Rect, disabled: bool = False, active: bool = False) -> None:
-        assert self.spider_button_surface
-        r = self.spider_button_surface.get_rect(center=rect.center)
-        surface.blit(self.spider_button_surface, r)
-        if disabled:
-            draw_tint_overlay(surface, rect, (40, 40, 40), 150)
-        elif active:
-            draw_tint_overlay(surface, rect, (50, 220, 150), 100)
-        else:
-            draw_tint_overlay(surface, rect, (0, 0, 0), 55)
-
-    def draw_snack_button(self, surface: pygame.Surface, rect: pygame.Rect, disabled: bool = False, active: bool = False) -> None:
-        assert self.snack_button_surface
-        r = self.snack_button_surface.get_rect(center=rect.center)
-        surface.blit(self.snack_button_surface, r)
-        if disabled:
-            draw_tint_overlay(surface, rect, (40, 40, 40), 150)
-        elif active:
-            draw_tint_overlay(surface, rect, (50, 220, 150), 100)
-        else:
-            draw_tint_overlay(surface, rect, (0, 0, 0), 55)
-
-    def draw_run_button(self, surface: pygame.Surface, rect: pygame.Rect, disabled: bool = False) -> None:
-        assert self.run_button_surface
-        r = self.run_button_surface.get_rect(center=rect.center)
-        surface.blit(self.run_button_surface, r)
-        if disabled:
-            draw_tint_overlay(surface, rect, (40, 40, 40), 160)
-
-    def draw_reset_button(self, surface: pygame.Surface, rect: pygame.Rect, disabled: bool = False) -> None:
-        assert self.reset_button_surface
-        r = self.reset_button_surface.get_rect(center=rect.center)
-        surface.blit(self.reset_button_surface, r)
-        if disabled:
-            draw_tint_overlay(surface, rect, (40, 40, 40), 160)

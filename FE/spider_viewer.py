@@ -13,7 +13,9 @@ import pygame
 
 from backend_adapter import BackendAdapter, SolveResult
 from frontend_state import AppPhase, FrontendState, PlacementTool
-from spider_render import Grid, SpiderRenderHandler, UiRects
+from spider_assets import SpiderAssets
+from spider_layout import Grid, LayoutManager, UiRects
+from spider_drawer import SceneDrawer
 from spider_scene import BOARD_COLS, BOARD_ROWS
 
 
@@ -112,9 +114,10 @@ def main() -> None:
     adapter = BackendAdapter()
     state = FrontendState()
 
+    assets = SpiderAssets(args.assets_dir)
     grid = Grid(BOARD_ROWS, BOARD_COLS)
-    renderer = SpiderRenderHandler(args.assets_dir, grid)
-    _, ui_rects = renderer.apply_layout(surface)
+    layout_manager = LayoutManager(assets, grid)
+    drawer = SceneDrawer(assets, grid)
     elapsed_for_step = 0.0
 
     running = True
@@ -128,6 +131,8 @@ def main() -> None:
             animate_state(state)
             elapsed_for_step -= args.step_ms
 
+        window_layout, ui_rects = layout_manager.update_layout(surface)
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
@@ -140,7 +145,7 @@ def main() -> None:
                 if cell is not None:
                     state.remove_at(cell)
 
-        ui_rects = renderer.draw(surface, state)
+        drawer.draw(surface, state, window_layout, ui_rects)
         pygame.display.flip()
 
     pygame.quit()
