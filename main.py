@@ -24,7 +24,8 @@ def run(label: str, maze_text: str) -> None:
     path: list = []
     try:
         while True:
-            pos = next(gen)
+            pos, cost, heuristic = next(gen)
+            #print(f"{pos=}, {cost=}, {heuristic=}")
             explored.append(pos)
     except StopIteration as e:
         path = e.value

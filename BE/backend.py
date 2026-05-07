@@ -5,6 +5,7 @@ from maze import Maze
 
 type Pos = tuple[int, int] # (row, col)
 type State = tuple[Pos, frozenset[Pos]] # (current position, remaining objectives)
+type PathState = tuple[Pos, int, int] # (current position, g_cost, heuristic)
 
 
 def manhattan(a: Pos, b: Pos) -> int:
@@ -44,7 +45,7 @@ def mst_heuristic(pos: Pos, remaining: frozenset[Pos]) -> int:
     return total
 
 
-def get_Astar_result(maze: Maze) -> Generator[Pos, None, list[Pos]]:
+def get_Astar_result(maze: Maze) -> Generator[PathState, None, list[Pos]]:
     """
     Multi-objective A* search over the maze.
 
@@ -78,7 +79,7 @@ def get_Astar_result(maze: Maze) -> Generator[Pos, None, list[Pos]]:
     # We loop until there are no more states to explore (i.e. the priority queue is empty)
     while priority_queue:
         # Pop the state with the lowest f_cost (g_cost + heuristic) from the priority queue
-        _, state = heapq.heappop(priority_queue)
+        f_cost, state = heapq.heappop(priority_queue)
 
         # Skip stale heap entries: if we already expanded this state via a cheaper path, ignore it
         if state in visited:
@@ -87,7 +88,7 @@ def get_Astar_result(maze: Maze) -> Generator[Pos, None, list[Pos]]:
 
         pos, remaining = state
         maze._incrementStatesExplored()
-        yield pos
+        yield pos, g_cost[state], f_cost-g_cost[state]
 
         # If there are no remaining objectives, we have found a path to collect them all
         if not remaining:
