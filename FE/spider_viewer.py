@@ -117,6 +117,7 @@ def main() -> None:
     assets = SpiderAssets(args.assets_dir)
     grid = Grid(BOARD_ROWS, BOARD_COLS)
     layout_manager = LayoutManager(assets, grid)
+    window_layout, ui_rects = layout_manager.update_layout(surface)
     drawer = SceneDrawer(assets, grid)
     elapsed_for_step = 0.0
 
@@ -131,13 +132,13 @@ def main() -> None:
             animate_state(state)
             elapsed_for_step -= args.step_ms
 
-        window_layout, ui_rects = layout_manager.update_layout(surface)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
             elif event.type == pygame.VIDEORESIZE:
                 surface = pygame.display.set_mode((event.w, event.h), pygame.RESIZABLE)
+                window_layout, ui_rects = layout_manager.update_layout(surface)
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 handle_left_click(event.pos, state, ui_rects, grid, adapter, now_ms)
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 3:

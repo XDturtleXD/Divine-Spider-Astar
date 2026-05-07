@@ -9,21 +9,16 @@ from frontend_state import AppPhase, FrontendState, PlacementTool
 from spider_scene import MAX_SNACKS
 
 
-def draw_tint_overlay(surface: pygame.Surface, rect: pygame.Rect, rgb: tuple[int, int, int], alpha: int) -> None:
-    """Draw a semi-transparent tint overlay over a rect."""
-    overlay = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
-    overlay.fill((*rgb, alpha))
-    surface.blit(overlay, rect)
+def draw_button(surface: pygame.Surface, tints: dict[str, pygame.Surface], rect: pygame.Rect, disabled: bool = False, active: bool = False) -> None:
+    if disabled:
+        button = tints["disabled"]
+    elif active:
+        button = tints["active"]
+    else:
+        button = tints["normal"]
 
-def draw_button(surface: pygame.Surface, button: pygame.Surface, rect: pygame.Rect, disabled: bool = False, active: bool = False) -> None:
     r = button.get_rect(center=rect.center)
     surface.blit(button, r)
-    if disabled:
-        draw_tint_overlay(surface, rect, (40, 40, 40), 150)
-    elif active:
-        draw_tint_overlay(surface, rect, (50, 220, 150), 100)
-    else:
-        draw_tint_overlay(surface, rect, (0, 0, 0), 55)
 
 
 class SceneDrawer:
@@ -92,20 +87,38 @@ class SceneDrawer:
         spider_disabled = state.phase != AppPhase.PLACEMENT
         spider_active = state.active_tool == PlacementTool.SPIDER
         draw_button(
-            surface, self.assets.spider_button_surface, ui_rects.spider_button, disabled=spider_disabled, active=spider_active
+            surface,
+            self.assets.spider_button_tints,
+            ui_rects.spider_button,
+            disabled=spider_disabled,
+            active=spider_active
         )
 
         snack_disabled = state.phase != AppPhase.PLACEMENT or len(state.snacks) >= MAX_SNACKS
         snack_active = state.active_tool == PlacementTool.SNACK
         draw_button(
-            surface, self.assets.snack_button_surface, ui_rects.snack_button, disabled=snack_disabled, active=snack_active
+            surface,
+            self.assets.snack_button_tints,
+            ui_rects.snack_button,
+            disabled=snack_disabled,
+            active=snack_active
         )
 
         run_disabled = state.phase != AppPhase.PLACEMENT or not state.can_run()
-        draw_button(surface, self.assets.run_button_surface, ui_rects.run_button, disabled=run_disabled)
+        draw_button(
+            surface,
+            self.assets.run_button_tints,
+            ui_rects.run_button,
+            disabled=run_disabled
+        )
 
         reset_disabled = state.phase == AppPhase.PLACEMENT
-        draw_button(surface, self.assets.reset_button_surface, ui_rects.reset_button, disabled=reset_disabled)
+        draw_button(
+            surface,
+            self.assets.reset_button_tints,
+            ui_rects.reset_button,
+            disabled=reset_disabled
+        )
 
     def _draw_toast(self, surface: pygame.Surface, state: FrontendState, above_y: int | None = None) -> None:
         """Render temporary toast message if present."""
@@ -124,4 +137,3 @@ class SceneDrawer:
         toast_bg.fill((0, 0, 0, 165))
         surface.blit(toast_bg, toast_rect)
         surface.blit(text_surface, (toast_rect.x + padding_x, toast_rect.y + padding_y))
-
