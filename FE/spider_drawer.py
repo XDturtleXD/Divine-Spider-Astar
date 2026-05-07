@@ -1,4 +1,5 @@
 """Drawing logic for spider viewer scene: grid, entities, controls, toasts."""
+
 from __future__ import annotations
 
 import pygame
@@ -9,7 +10,13 @@ from frontend_state import AppPhase, FrontendState, PlacementTool
 from spider_scene import MAX_SNACKS
 
 
-def draw_button(surface: pygame.Surface, tints: dict[str, pygame.Surface], rect: pygame.Rect, disabled: bool = False, active: bool = False) -> None:
+def draw_button(
+    surface: pygame.Surface,
+    tints: dict[str, pygame.Surface],
+    rect: pygame.Rect,
+    disabled: bool = False,
+    active: bool = False,
+) -> None:
     if disabled:
         button = tints["disabled"]
     elif active:
@@ -91,7 +98,7 @@ class SceneDrawer:
             self.assets.spider_button_tints,
             ui_rects.spider_button,
             disabled=spider_disabled,
-            active=spider_active
+            active=spider_active,
         )
 
         snack_disabled = state.phase != AppPhase.PLACEMENT or len(state.snacks) >= MAX_SNACKS
@@ -101,7 +108,7 @@ class SceneDrawer:
             self.assets.snack_button_tints,
             ui_rects.snack_button,
             disabled=snack_disabled,
-            active=snack_active
+            active=snack_active,
         )
 
         run_disabled = state.phase != AppPhase.PLACEMENT or not state.can_run()
@@ -109,7 +116,7 @@ class SceneDrawer:
             surface,
             self.assets.run_button_tints,
             ui_rects.run_button,
-            disabled=run_disabled
+            disabled=run_disabled,
         )
 
         reset_disabled = state.phase == AppPhase.PLACEMENT
@@ -117,7 +124,7 @@ class SceneDrawer:
             surface,
             self.assets.reset_button_tints,
             ui_rects.reset_button,
-            disabled=reset_disabled
+            disabled=reset_disabled,
         )
 
     def _draw_toast(self, surface: pygame.Surface, state: FrontendState, above_y: int | None = None) -> None:
