@@ -1,4 +1,5 @@
 """Layout management for interactive spider viewer: grid geometry, UI rects, asset scaling."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -53,6 +54,8 @@ class Grid:
         self.offset_y = rect.y + max(0, (rect.height - board_h) // 2)
 
     def cell_rect(self, row: int, col: int) -> pygame.Rect:
+        # row input in [-1, rows], col in [-1, cols]
+        row, col = row + 1, col + 1
         return pygame.Rect(
             self.offset_x + col * self.cell_s,
             self.offset_y + row * self.cell_s,
@@ -65,8 +68,8 @@ class Grid:
         ry = y - self.offset_y
         if rx < 0 or ry < 0:
             return None
-        col = rx // self.cell_s
-        row = ry // self.cell_s
+        col = rx // self.cell_s - 1  # -1 for the top and left borders
+        row = ry // self.cell_s - 1
         if 0 <= row < self.rows and 0 <= col < self.cols:
             return (row, col)
         return None
