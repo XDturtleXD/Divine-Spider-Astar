@@ -46,7 +46,7 @@ def try_run(state: FrontendState, adapter, now_ms: int) -> None:
         return
     assert state.spider is not None
     try:
-        result = adapter.solve(
+        generator, maze, temp_dir = adapter.create_solver_generator(
             rows=BOARD_ROWS,
             cols=BOARD_COLS,
             spider=state.spider,
@@ -56,21 +56,42 @@ def try_run(state: FrontendState, adapter, now_ms: int) -> None:
         state.set_toast(f"Backend error: {exc}", now_ms, duration_ms=2600)
         return
 
-    apply_solve_result(state, result)
-    if not result.path:
-        state.set_toast("No path found.", now_ms)
+    state.playback.reset()
+    state.phase = AppPhase.EXPLORATION
+    state.solver_generator = (generator, maze, temp_dir)
+    state.solver_finished = False
 
 
 def animate_state(state: FrontendState) -> None:
-    if state.phase == AppPhase.EXPLORATION:
-        if state.playback.explored_index < len(state.playback.explored):
-            state.playback.explored_index += 1
-            return
-        state.phase = AppPhase.PATH
-        return
+    if state.phase != AppPhase.EXPLORATION:
+        pass
+    elif state.solver_finished:
+        pass
+    elif state.solver_generator is None:
+        pass
+    else:
+        generator, maze, temp_dir = state.solver_generator
 
-    if state.phase == AppPhase.PATH and state.playback.path_index < len(state.playback.path):
-        state.playback.path_index += 1
+        try:
+            next_position = next(generator)
+            state.playback.explored.append(next_position)
+            state.playback.explored_index += 1
+
+        except StopIteration as stop_signal:
+            state.playback.path = stop_signal.value or []
+            state.playback.path_index = 0
+
+            state.solver_finished = True
+            state.phase = AppPhase.PATH
+
+            validation = maze.isValidPath(state.playback.path)
+            print("Validation:", validation)
+
+            temp_dir.cleanup()
+
+    if state.phase == AppPhase.PATH:
+        if state.playback.path_index < len(state.playback.path):
+            state.playback.path_index += 1
 
 
 def handle_left_click(
