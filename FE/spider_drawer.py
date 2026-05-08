@@ -35,6 +35,7 @@ class SceneDrawer:
         self.assets = assets
         self.grid = grid
         self._font = pygame.font.SysFont("arial", 18)
+        self._cost_font = pygame.font.SysFont("arial", 16)
 
     def draw(
         self,
@@ -56,20 +57,70 @@ class SceneDrawer:
                 else:
                     surface.blit(self.assets.ground_tile, dest)
 
-        # Draw explored cells overlay
-        explored = state.playback.visible_explored()
-        for row, col in explored:
+        # Draw explored cells overlay: yellow for old, green for latest (no cost numbers)
+        latest = state.playback.latest_explored()
+        for (row, col), _ in state.playback.visible_explored_with_f():
+            cell_rect = self.grid.cell_rect(row, col)
             overlay = pygame.Surface((self.grid.cell_s, self.grid.cell_s), pygame.SRCALPHA)
-            overlay.fill((255, 220, 70, 110))
-            surface.blit(overlay, self.grid.cell_rect(row, col))
+            overlay.fill((80, 220, 80, 180) if (row, col) == latest else (255, 220, 70, 110))
+            surface.blit(overlay, cell_rect)
 
-        # Draw path overlay
+        # Draw top-3 frontier candidates — only during exploration, not in final PATH state
+        if state.phase == AppPhase.EXPLORATION:
+            next_cell = state.playback.next_cell()
+            sub = state.playback.sub_step
+            top_frontier = sorted(state.playback.current_frontier().items(), key=lambda x: x[1])[:3]
+            for (row, col), f in top_frontier:
+                is_selected = (row, col) == next_cell
+                cell_rect = self.grid.cell_rect(row, col)
+
+                # Blue overlay + f cost — skip on selected cell once it turns green (sub_step 2)
+                if not (is_selected and sub >= 2):
+                    overlay = pygame.Surface((self.grid.cell_s, self.grid.cell_s), pygame.SRCALPHA)
+                    overlay.fill((80, 160, 255, 120))
+                    surface.blit(overlay, cell_rect)
+                    f_surf = self._cost_font.render(str(f), True, (10, 10, 80))
+                    surface.blit(f_surf, (cell_rect.x + 2, cell_rect.y + 2))
+
+                # Border logic:
+                #   sub_step 0 — selected looks same as others (blue border + number, user sees it as candidate)
+                #   sub_step 1 — selected border removed (border-removal animation)
+                #   sub_step 2 — selected is green; others keep blue border
+                if not (is_selected and sub >= 1):
+                    pygame.draw.rect(surface, (80, 160, 255), cell_rect, 2)
+
+        # Draw path as offset thin lines (non-overlapping for repeated edges)
         visible_path = state.playback.visible_path()
-        for row, col in visible_path:
-            path_rect = self.grid.cell_rect(row, col)
-            tint = pygame.Surface((path_rect.width, path_rect.height), pygame.SRCALPHA)
-            tint.fill((220, 35, 35, 145))
-            surface.blit(tint, path_rect)
+        if len(visible_path) >= 2:
+            LINE_COLOR = (220, 35, 35)
+            OFFSET_STEP = 4
+
+            # Count total traversals per canonical edge
+            total_count: dict = {}
+            for a, b in zip(visible_path, visible_path[1:]):
+                key = (min(a, b), max(a, b))
+                total_count[key] = total_count.get(key, 0) + 1
+
+            # Draw each segment with perpendicular offset by traversal slot
+            seen: dict = {}
+            for a, b in zip(visible_path, visible_path[1:]):
+                key = (min(a, b), max(a, b))
+                slot = seen.get(key, 0)
+                seen[key] = slot + 1
+                total = total_count[key]
+                offset_val = (slot - (total - 1) / 2.0) * OFFSET_STEP
+                dr = b[0] - a[0]
+                if dr != 0:  # vertical movement → offset horizontally
+                    ox, oy = int(offset_val), 0
+                else:         # horizontal movement → offset vertically
+                    ox, oy = 0, int(offset_val)
+                ra = self.grid.cell_rect(*a).center
+                rb = self.grid.cell_rect(*b).center
+                pygame.draw.line(surface, LINE_COLOR, (ra[0] + ox, ra[1] + oy), (rb[0] + ox, rb[1] + oy), 3)
+
+        elif len(visible_path) == 1:
+            center = self.grid.cell_rect(*visible_path[0]).center
+            pygame.draw.circle(surface, (220, 35, 35), center, 3)
 
         # Draw snacks (skip consumed ones during path/exploration)
         consumed = set(visible_path) if state.phase in (AppPhase.PATH, AppPhase.EXPLORATION) else set()

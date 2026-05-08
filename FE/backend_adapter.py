@@ -12,6 +12,8 @@ from spider_scene import Position, build_maze_text
 @dataclass(frozen=True)
 class SolveResult:
     explored_positions: list[Position]
+    explored_f_costs: list[int]
+    explored_frontiers: list[dict[Position, int]]
     path: list[Position]
     validation_result: str
 
@@ -28,6 +30,9 @@ class BackendAdapter:
         from backend import get_Astar_result  # type: ignore
         from maze import Maze  # type: ignore
 
+        explored_f_costs: list[int] = []
+        explored_frontiers: list[dict[Position, int]] = []
+
         with tempfile.TemporaryDirectory(prefix="spider_maze_") as temp_dir:
             maze_path = Path(temp_dir) / "frontend_generated_maze.txt"
             maze_path.write_text(maze_text, encoding="utf-8")
@@ -35,13 +40,18 @@ class BackendAdapter:
             generator = get_Astar_result(maze)
             try:
                 while True:
-                    explored_positions.append(next(generator))
+                    pos, f, frontier = next(generator)
+                    explored_positions.append(pos)
+                    explored_f_costs.append(f)
+                    explored_frontiers.append(frontier)
             except StopIteration as stop_signal:
                 path = stop_signal.value or []
 
             validation = maze.isValidPath(path)
             return SolveResult(
                 explored_positions=explored_positions,
+                explored_f_costs=explored_f_costs,
+                explored_frontiers=explored_frontiers,
                 path=path,
                 validation_result=validation,
             )

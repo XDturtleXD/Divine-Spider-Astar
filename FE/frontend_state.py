@@ -22,18 +22,49 @@ class PlacementTool(str, Enum):
 @dataclass
 class PlaybackState:
     explored: list[Position] = field(default_factory=list)
+    explored_f_costs: list[int] = field(default_factory=list)
+    explored_frontiers: list[dict[Position, int]] = field(default_factory=list)
     path: list[Position] = field(default_factory=list)
     explored_index: int = 0
     path_index: int = 0
+    sub_step: int = 0  # 0: borders shown, 1: selected border removed, 2: selected turns green
 
     def reset(self) -> None:
         self.explored.clear()
+        self.explored_f_costs.clear()
+        self.explored_frontiers.clear()
         self.path.clear()
         self.explored_index = 0
         self.path_index = 0
+        self.sub_step = 0
 
     def visible_explored(self) -> set[Position]:
         return set(self.explored[: self.explored_index])
+
+    def visible_explored_with_f(self) -> list[tuple[Position, int]]:
+        # At sub_step 2, include the just-selected cell so it renders green
+        count = self.explored_index
+        if self.sub_step == 2 and count < len(self.explored):
+            count += 1
+        return list(zip(self.explored[:count], self.explored_f_costs[:count]))
+
+    def current_frontier(self) -> dict[Position, int]:
+        if self.explored_index == 0:
+            return {}
+        return self.explored_frontiers[self.explored_index - 1]
+
+    def latest_explored(self) -> Position | None:
+        # At sub_step 2, the next cell has just turned green
+        if self.sub_step == 2 and self.explored_index < len(self.explored):
+            return self.explored[self.explored_index]
+        if self.explored_index == 0:
+            return None
+        return self.explored[self.explored_index - 1]
+
+    def next_cell(self) -> Position | None:
+        if self.explored_index < len(self.explored):
+            return self.explored[self.explored_index]
+        return None
 
     def visible_path(self) -> list[Position]:
         return self.path[: self.path_index]

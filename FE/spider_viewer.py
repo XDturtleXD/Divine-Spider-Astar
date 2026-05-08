@@ -24,7 +24,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--width", type=int, default=980, help="Initial window width")
     parser.add_argument("--height", type=int, default=720, help="Initial window height")
     parser.add_argument("--fps", type=int, default=60, help="Render FPS")
-    parser.add_argument("--step-ms", type=int, default=90, help="Animation step interval (ms)")
+    parser.add_argument("--step-ms", type=int, default=500, help="Animation step interval (ms)")
     parser.add_argument(
         "--assets-dir",
         type=str,
@@ -36,6 +36,8 @@ def parse_args() -> argparse.Namespace:
 
 def apply_solve_result(state: FrontendState, result: SolveResult) -> None:
     state.playback.explored = result.explored_positions
+    state.playback.explored_f_costs = result.explored_f_costs
+    state.playback.explored_frontiers = result.explored_frontiers
     state.playback.path = result.path
     state.playback.explored_index = 0
     state.playback.path_index = 0
@@ -66,7 +68,10 @@ def try_run(state: FrontendState, adapter, now_ms: int) -> None:
 def animate_state(state: FrontendState) -> None:
     if state.phase == AppPhase.EXPLORATION:
         if state.playback.explored_index < len(state.playback.explored):
-            state.playback.explored_index += 1
+            state.playback.sub_step += 1
+            if state.playback.sub_step >= 3:
+                state.playback.sub_step = 0
+                state.playback.explored_index += 1
             return
         state.phase = AppPhase.PATH
         return
