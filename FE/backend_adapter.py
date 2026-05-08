@@ -35,7 +35,8 @@ class BackendAdapter:
             generator = get_Astar_result(maze)
             try:
                 while True:
-                    explored_positions.append(next(generator))
+                    pos, cost, heuristic = next(generator)
+                    explored_positions.append(pos)
             except StopIteration as stop_signal:
                 path = stop_signal.value or []
 
