@@ -1,4 +1,5 @@
 import heapq
+import functools
 from collections.abc import Generator
 
 from maze import Maze
@@ -11,6 +12,7 @@ def manhattan(a: Pos, b: Pos) -> int:
     return abs(a[0] - b[0]) + abs(a[1] - b[1])
 
 
+@functools.lru_cache(maxsize=None)
 def mst_heuristic(pos: Pos, remaining: frozenset[Pos]) -> int:
     """
     Lower-bound cost to connect pos to all remaining objectives via Prim's MST.
@@ -53,8 +55,7 @@ def get_Astar_result(maze: Maze) -> Generator[Pos, None, list[Pos]]:
     necessary for correctness when objectives can be collected in any order.
 
     Yields each explored position for visualization. Returns the path
-    (first step after start → ... → last objective) via StopIteration.value.
-    The start position itself is excluded from the returned path.
+    (start → ... → last objective) via StopIteration.value.
     """
     # Initialize the priority queue with the starting position and all objectives remaining
     start = maze.getStart()
@@ -66,9 +67,11 @@ def get_Astar_result(maze: Maze) -> Generator[Pos, None, list[Pos]]:
         raise ValueError("Maze is missing objectives.")
 
     initial_remaining: frozenset[Pos] = frozenset(objectives)
+    objectives_set: frozenset[Pos] = initial_remaining
     initial_state: State = (start, initial_remaining)
-    priority_queue: list[tuple[int, State]] = []
-    heapq.heappush(priority_queue, (0, initial_state))
+    priority_queue: list[tuple[int, int, int, int, State]] = []
+    counter: int = 0  # FIFO tiebreaker; prevents frozenset comparison on equal f-cost
+    heapq.heappush(priority_queue, (0, 0, 1, counter, initial_state))
 
     parents: dict[State, State | None] = {initial_state: None} # to reconstruct the path once we reach the goal
     g_cost: dict[State, int] = {initial_state: 0} # cost from start to this state
@@ -78,7 +81,7 @@ def get_Astar_result(maze: Maze) -> Generator[Pos, None, list[Pos]]:
     # We loop until there are no more states to explore (i.e. the priority queue is empty)
     while priority_queue:
         # Pop the state with the lowest f_cost (g_cost + heuristic) from the priority queue
-        _, state = heapq.heappop(priority_queue)
+        _, _, _, _, state = heapq.heappop(priority_queue)
 
         # Skip stale heap entries: if we already expanded this state via a cheaper path, ignore it
         if state in visited:
@@ -87,32 +90,43 @@ def get_Astar_result(maze: Maze) -> Generator[Pos, None, list[Pos]]:
 
         pos, remaining = state
         maze._incrementStatesExplored()
-        yield pos
+        f = g_cost[state] + mst_heuristic(pos, remaining)
 
-        # If there are no remaining objectives, we have found a path to collect them all
+        # Terminal state: yield empty frontier then reconstruct path
         if not remaining:
+            yield pos, f, {}
             path: list[Pos] = []
             s: State | None = state
-            while s is not None: # reconstruct the path by following the parent pointers back to the start
+            while s is not None:
                 path.append(s[0])
                 s = parents[s]
-            path.pop()
-            path.reverse() # reverse the path to get it from start to goal
+            path.reverse()
             return path
 
-        # For each valid neighboring position,
+        # Process neighbors FIRST so the frontier snapshot includes them —
+        # this guarantees the next cell to be popped is visible as a candidate
         for n in maze.getNeighbors(pos[0], pos[1]):
-            new_remaining: frozenset[Pos] = remaining - {n} # if n is an objective, remove it from the remaining set
-            new_state: State = (n, new_remaining) # the new state is the neighbor position and the updated remaining objectives
-            new_cost: int = g_cost[state] + 1 # the cost to move to a neighbor is always 1
+            new_remaining: frozenset[Pos] = remaining - {n}
+            new_state: State = (n, new_remaining)
+            new_cost: int = g_cost[state] + 1
 
-            # A* logic: if we haven't seen this state before, or we found a cheaper path to it,
-            # update the costs and add it to the priority queue
             if new_state not in g_cost or new_cost < g_cost[new_state]:
                 g_cost[new_state] = new_cost
-                priority: int = new_cost + mst_heuristic(n, new_remaining) # f_cost = g_cost + heuristic
-                heapq.heappush(priority_queue, (priority, new_state)) # push the new state with its f_cost into the priority queue
-                parents[new_state] = state # update the parent pointer for path reconstruction
+                priority: int = new_cost + mst_heuristic(n, new_remaining)
+                counter += 1
+                is_not_snack = 0 if n in objectives_set else 1
+                heapq.heappush(priority_queue, (priority, -new_cost, is_not_snack, counter, new_state))
+                parents[new_state] = state
+
+        # Snapshot frontier AFTER neighbors are added
+        frontier: dict[Pos, int] = {}
+        for entry_f, _, _, _, entry_state in priority_queue:
+            if entry_state not in visited:
+                entry_pos = entry_state[0]
+                if entry_pos not in frontier or entry_f < frontier[entry_pos]:
+                    frontier[entry_pos] = entry_f
+
+        yield pos, f, frontier
 
     # No solution exists that collects all objectives.
     return []
