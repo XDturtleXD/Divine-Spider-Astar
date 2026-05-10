@@ -36,8 +36,10 @@ def parse_args() -> argparse.Namespace:
 
 def apply_solve_result(state: FrontendState, result: SolveResult) -> None:
     state.playback.explored = result.explored_positions
-    state.playback.explored_f_costs = result.explored_f_costs
+    state.playback.explored_s_costs = result.explored_s_costs
+    state.playback.explored_h_costs = result.explored_h_costs
     state.playback.explored_frontiers = result.explored_frontiers
+    state.playback.explored_remaining = result.explored_remaining
     state.playback.path = result.path
     state.playback.explored_index = 0
     state.playback.path_index = 0

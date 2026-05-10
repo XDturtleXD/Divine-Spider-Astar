@@ -36,6 +36,7 @@ class SceneDrawer:
         self.grid = grid
         self._font = pygame.font.SysFont("arial", 18)
         self._cost_font = pygame.font.SysFont("arial", 16)
+        self._badge_font = pygame.font.SysFont("arial", 11, bold=True)
 
     def draw(
         self,
@@ -57,30 +58,47 @@ class SceneDrawer:
                 else:
                     surface.blit(self.assets.ground_tile, dest)
 
-        # Draw explored cells overlay: yellow for old, green for latest (no cost numbers)
+        # Draw explored cells overlay: yellow for old, green for latest
         latest = state.playback.latest_explored()
-        for (row, col), _ in state.playback.visible_explored_with_f():
+        visit_counts = state.playback.position_visit_counts()
+        current_remaining = state.playback.current_remaining()
+        current_sh = state.playback.current_s_h()
+        for (row, col), _g, _h in state.playback.visible_explored_with_costs():
             cell_rect = self.grid.cell_rect(row, col)
+            is_latest = (row, col) == latest
             overlay = pygame.Surface((self.grid.cell_s, self.grid.cell_s), pygame.SRCALPHA)
-            overlay.fill((80, 220, 80, 180) if (row, col) == latest else (255, 220, 70, 110))
+            overlay.fill((80, 220, 80, 180) if is_latest else (255, 220, 70, 110))
             surface.blit(overlay, cell_rect)
+
+            # Badge: show ×N when same position expanded multiple times (different snack states)
+            if visit_counts.get((row, col), 1) > 1:
+                self._draw_visit_badge(surface, cell_rect, visit_counts[(row, col)])
+
+            # Latest cell: show g/h breakdown and snack dot count
+            if is_latest:
+                if current_sh is not None:
+                    self._draw_gh_label(surface, cell_rect, current_sh[0], current_sh[1])
+                if current_remaining is not None:
+                    self._draw_snack_dots(surface, cell_rect, len(current_remaining))
 
         # Draw top-3 frontier candidates — only during exploration, not in final PATH state
         if state.phase == AppPhase.EXPLORATION:
             next_cell = state.playback.next_cell()
             sub = state.playback.sub_step
-            top_frontier = sorted(state.playback.current_frontier().items(), key=lambda x: x[1])[:3]
-            for (row, col), f in top_frontier:
+            top_frontier = sorted(state.playback.current_frontier().items(), key=lambda x: x[1][0] + x[1][1])[:3]
+            for (row, col), (fg, fh) in top_frontier:
                 is_selected = (row, col) == next_cell
                 cell_rect = self.grid.cell_rect(row, col)
 
-                # Blue overlay + f cost — skip on selected cell once it turns green (sub_step 2)
+                # Blue overlay + g/h breakdown — skip on selected cell once it turns green (sub_step 2)
                 if not (is_selected and sub >= 2):
                     overlay = pygame.Surface((self.grid.cell_s, self.grid.cell_s), pygame.SRCALPHA)
                     overlay.fill((80, 160, 255, 120))
                     surface.blit(overlay, cell_rect)
-                    f_surf = self._cost_font.render(str(f), True, (10, 10, 80))
+                    f_surf = self._cost_font.render(f"c={fg + fh}", True, (10, 10, 80))
+                    gh_surf = self._badge_font.render(f"s={fg} h={fh}", True, (10, 10, 80))
                     surface.blit(f_surf, (cell_rect.x + 2, cell_rect.y + 2))
+                    surface.blit(gh_surf, (cell_rect.x + 2, cell_rect.y + 2 + f_surf.get_height()))
 
                 # Border logic:
                 #   sub_step 0 — selected looks same as others (blue border + number, user sees it as candidate)
@@ -177,6 +195,36 @@ class SceneDrawer:
             ui_rects.reset_button,
             disabled=reset_disabled,
         )
+
+    def _draw_gh_label(self, surface: pygame.Surface, cell_rect: pygame.Rect, s: int, h: int) -> None:
+        """Show c=s+h breakdown at top-left of the currently expanded (green) cell."""
+        c_surf = self._cost_font.render(f"c={s + h}", True, (255, 255, 255))
+        sh_surf = self._badge_font.render(f"s={s} h={h}", True, (220, 220, 255))
+        surface.blit(c_surf, (cell_rect.x + 2, cell_rect.y + 2))
+        surface.blit(sh_surf, (cell_rect.x + 2, cell_rect.y + 2 + c_surf.get_height()))
+
+    def _draw_visit_badge(self, surface: pygame.Surface, cell_rect: pygame.Rect, count: int) -> None:
+        """Draw ×N badge at top-right of cell when same position expanded N times."""
+        text_surf = self._badge_font.render(f"\xd7{count}", True, (255, 220, 100))
+        bg_w = text_surf.get_width() + 4
+        bg_h = text_surf.get_height() + 2
+        bg = pygame.Surface((bg_w, bg_h), pygame.SRCALPHA)
+        bg.fill((0, 0, 0, 180))
+        bx = cell_rect.right - bg_w
+        surface.blit(bg, (bx, cell_rect.top))
+        surface.blit(text_surf, (bx + 2, cell_rect.top + 1))
+
+    def _draw_snack_dots(self, surface: pygame.Surface, cell_rect: pygame.Rect, count: int) -> None:
+        """Draw orange dots at bottom of cell indicating remaining snack count in current A* state."""
+        if count == 0:
+            return
+        dot_r = 3
+        spacing = 8
+        total_w = (count - 1) * spacing
+        cx_start = cell_rect.centerx - total_w // 2
+        cy = cell_rect.bottom - 6
+        for i in range(count):
+            pygame.draw.circle(surface, (255, 150, 30), (cx_start + i * spacing, cy), dot_r)
 
     def _draw_toast(self, surface: pygame.Surface, state: FrontendState, above_y: int | None = None) -> None:
         """Render temporary toast message if present."""

@@ -90,11 +90,12 @@ def get_Astar_result(maze: Maze) -> Generator[Pos, None, list[Pos]]:
 
         pos, remaining = state
         maze._incrementStatesExplored()
-        f = g_cost[state] + mst_heuristic(pos, remaining)
+        g = g_cost[state]
+        h = mst_heuristic(pos, remaining)
 
         # Terminal state: yield empty frontier then reconstruct path
         if not remaining:
-            yield pos, f, {}
+            yield pos, remaining, g, h, {}
             path: list[Pos] = []
             s: State | None = state
             while s is not None:
@@ -118,15 +119,17 @@ def get_Astar_result(maze: Maze) -> Generator[Pos, None, list[Pos]]:
                 heapq.heappush(priority_queue, (priority, -new_cost, is_not_snack, counter, new_state))
                 parents[new_state] = state
 
-        # Snapshot frontier AFTER neighbors are added
-        frontier: dict[Pos, int] = {}
-        for entry_f, _, _, _, entry_state in priority_queue:
+        # Snapshot frontier AFTER neighbors are added; store (g, h) per position
+        frontier: dict[Pos, tuple[int, int]] = {}
+        for entry_f, neg_entry_g, _, _, entry_state in priority_queue:
             if entry_state not in visited:
                 entry_pos = entry_state[0]
-                if entry_pos not in frontier or entry_f < frontier[entry_pos]:
-                    frontier[entry_pos] = entry_f
+                entry_g = -neg_entry_g
+                entry_h = entry_f - entry_g
+                if entry_pos not in frontier or entry_f < sum(frontier[entry_pos]):
+                    frontier[entry_pos] = (entry_g, entry_h)
 
-        yield pos, f, frontier
+        yield pos, remaining, g, h, frontier
 
     # No solution exists that collects all objectives.
     return []

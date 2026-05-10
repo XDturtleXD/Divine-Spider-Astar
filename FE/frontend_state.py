@@ -22,8 +22,10 @@ class PlacementTool(str, Enum):
 @dataclass
 class PlaybackState:
     explored: list[Position] = field(default_factory=list)
-    explored_f_costs: list[int] = field(default_factory=list)
-    explored_frontiers: list[dict[Position, int]] = field(default_factory=list)
+    explored_s_costs: list[int] = field(default_factory=list)
+    explored_h_costs: list[int] = field(default_factory=list)
+    explored_frontiers: list[dict[Position, tuple[int, int]]] = field(default_factory=list)
+    explored_remaining: list[frozenset[Position]] = field(default_factory=list)
     path: list[Position] = field(default_factory=list)
     explored_index: int = 0
     path_index: int = 0
@@ -31,8 +33,10 @@ class PlaybackState:
 
     def reset(self) -> None:
         self.explored.clear()
-        self.explored_f_costs.clear()
+        self.explored_s_costs.clear()
+        self.explored_h_costs.clear()
         self.explored_frontiers.clear()
+        self.explored_remaining.clear()
         self.path.clear()
         self.explored_index = 0
         self.path_index = 0
@@ -41,14 +45,15 @@ class PlaybackState:
     def visible_explored(self) -> set[Position]:
         return set(self.explored[: self.explored_index])
 
-    def visible_explored_with_f(self) -> list[tuple[Position, int]]:
+    def visible_explored_with_costs(self) -> list[tuple[Position, int, int]]:
+        """Returns (pos, g, h) for each visible explored cell."""
         # At sub_step 2, include the just-selected cell so it renders green
         count = self.explored_index
         if self.sub_step == 2 and count < len(self.explored):
             count += 1
-        return list(zip(self.explored[:count], self.explored_f_costs[:count]))
+        return list(zip(self.explored[:count], self.explored_s_costs[:count], self.explored_h_costs[:count]))
 
-    def current_frontier(self) -> dict[Position, int]:
+    def current_frontier(self) -> dict[Position, tuple[int, int]]:
         if self.explored_index == 0:
             return {}
         return self.explored_frontiers[self.explored_index - 1]
@@ -60,6 +65,36 @@ class PlaybackState:
         if self.explored_index == 0:
             return None
         return self.explored[self.explored_index - 1]
+
+    def current_remaining(self) -> frozenset[Position] | None:
+        """Remaining snacks for the currently highlighted (green) explored cell."""
+        if not self.explored_remaining:
+            return None
+        if self.sub_step == 2 and self.explored_index < len(self.explored_remaining):
+            return self.explored_remaining[self.explored_index]
+        if self.explored_index == 0:
+            return None
+        return self.explored_remaining[self.explored_index - 1]
+
+    def current_s_h(self) -> tuple[int, int] | None:
+        """(g, h) costs for the currently highlighted (green) explored cell."""
+        if not self.explored_s_costs:
+            return None
+        if self.sub_step == 2 and self.explored_index < len(self.explored_s_costs):
+            return (self.explored_s_costs[self.explored_index], self.explored_h_costs[self.explored_index])
+        if self.explored_index == 0:
+            return None
+        return (self.explored_s_costs[self.explored_index - 1], self.explored_h_costs[self.explored_index - 1])
+
+    def position_visit_counts(self) -> dict[Position, int]:
+        """How many times each position has been expanded up to current playback step."""
+        count = self.explored_index
+        if self.sub_step == 2 and count < len(self.explored):
+            count += 1
+        counts: dict[Position, int] = {}
+        for pos in self.explored[:count]:
+            counts[pos] = counts.get(pos, 0) + 1
+        return counts
 
     def next_cell(self) -> Position | None:
         if self.explored_index < len(self.explored):
