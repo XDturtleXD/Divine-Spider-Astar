@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-import tempfile
 
 from spider_scene import Position, build_maze_text
 
@@ -28,41 +27,18 @@ class BackendAdapter:
         from backend import get_Astar_result  # type: ignore
         from maze import Maze  # type: ignore
 
-        with tempfile.TemporaryDirectory(prefix="spider_maze_") as temp_dir:
-            maze_path = Path(temp_dir) / "frontend_generated_maze.txt"
-            maze_path.write_text(maze_text, encoding="utf-8")
-            maze = Maze(str(maze_path))
-            generator = get_Astar_result(maze)
-            try:
-                while True:
-                    explored_positions.append(next(generator))
-            except StopIteration as stop_signal:
-                path = stop_signal.value or []
-
-            validation = maze.isValidPath(path)
-            return SolveResult(
-                explored_positions=explored_positions,
-                path=path,
-                validation_result=validation,
-            )
-
-    def create_solver_generator(
-        self,
-        rows: int,
-        cols: int,
-        spider: Position,
-        snacks: set[Position],
-    ):
-        maze_text = build_maze_text(rows, cols, spider, snacks)
-
-        from backend import get_Astar_result  # type: ignore
-        from maze import Maze  # type: ignore
-
-        temp_dir = tempfile.TemporaryDirectory(prefix="spider_maze_")
-        maze_path = Path(temp_dir.name) / "frontend_generated_maze.txt"
-        maze_path.write_text(maze_text, encoding="utf-8")
-
-        maze = Maze(str(maze_path))
+        # 直接傳入 maze_text，不再建立臨時檔案
+        maze = Maze(maze_text)
         generator = get_Astar_result(maze)
+        try:
+            while True:
+                explored_positions.append(next(generator))
+        except StopIteration as stop_signal:
+            path = stop_signal.value or []
 
-        return generator, maze, temp_dir
+        validation = maze.isValidPath(path)
+        return SolveResult(
+            explored_positions=explored_positions,
+            path=path,
+            validation_result=validation,
+        )

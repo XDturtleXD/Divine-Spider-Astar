@@ -23,17 +23,17 @@ class PlacementTool(str, Enum):
 class PlaybackState:
     explored: list[Position] = field(default_factory=list)
     path: list[Position] = field(default_factory=list)
-    explored_index: int = 0
+    # 根據建議移除 explored_index
     path_index: int = 0
 
     def reset(self) -> None:
         self.explored.clear()
         self.path.clear()
-        self.explored_index = 0
         self.path_index = 0
 
     def visible_explored(self) -> set[Position]:
-        return set(self.explored[: self.explored_index])
+        # 探索結果目前是一次性顯示，直接回傳全集
+        return set(self.explored)
 
     def visible_path(self) -> list[Position]:
         return self.path[: self.path_index]
@@ -48,9 +48,6 @@ class FrontendState:
     toast_message: str = ""
     toast_until_ms: int = 0
     playback: PlaybackState = field(default_factory=PlaybackState)
-
-    solver_generator: object | None = None
-    solver_finished: bool = False
 
     def can_run(self) -> bool:
         return self.spider is not None and len(self.snacks) >= 1
@@ -88,7 +85,6 @@ class FrontendState:
             self.set_toast("Cannot place snack on spider.", now_ms)
             return
         if cell in self.snacks:
-            self.set_toast("Cannot place multiple snacks in the same cell.", now_ms)
             return
         if len(self.snacks) >= MAX_SNACKS:
             self.set_toast(f"Snack limit reached ({MAX_SNACKS}/{MAX_SNACKS}).", now_ms)
