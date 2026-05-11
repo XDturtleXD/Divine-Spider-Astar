@@ -32,15 +32,14 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-# 根據建議移除未使用的 apply_solve_result 函式
-
 def try_run(state: FrontendState, adapter, now_ms: int) -> None:
     if not state.can_run():
         state.set_toast("Need 1 spider and at least 1 snack.", now_ms)
         return
     assert state.spider is not None
     try:
-        result = adapter.solve(
+        # 配合 adapter 的修改，不取回 temp_dir
+        generator, maze = adapter.create_solver_generator(
             rows=BOARD_ROWS,
             cols=BOARD_COLS,
             spider=state.spider,
@@ -50,21 +49,33 @@ def try_run(state: FrontendState, adapter, now_ms: int) -> None:
         state.set_toast(f"Backend error: {exc}", now_ms, duration_ms=2600)
         return
 
-    # 直接將結果寫入 playback
-    state.playback.explored = result.explored_positions
-    state.playback.path = result.path
-    state.playback.path_index = 0
+    state.playback.reset()
     state.phase = AppPhase.EXPLORATION
-
-    if not result.path:
-        state.set_toast("No path found.", now_ms)
+    state.solver_generator = (generator, maze)
+    state.solver_finished = False
 
 
 def animate_state(state: FrontendState) -> None:
-    # 根據建議簡化並鏈接狀態判斷
-    if state.phase == AppPhase.EXPLORATION:
-        # 由於 explored 現在是一次性顯示，直接切換到 PATH 階段
-        state.phase = AppPhase.PATH
+    # 使用建議的合併 if-elif 結構
+    if (state.phase == AppPhase.EXPLORATION and 
+        not state.solver_finished and 
+        state.solver_generator is not None):
+        
+        generator, maze = state.solver_generator
+
+        try:
+            next_position = next(generator)
+            state.playback.explored.append(next_position)
+            state.playback.explored_index += 1
+
+        except StopIteration as stop_signal:
+            state.playback.path = stop_signal.value or []
+            state.playback.path_index = 0
+
+            state.solver_finished = True
+            state.phase = AppPhase.PATH
+            # 移除 print("Validation:", validation)
+
     elif state.phase == AppPhase.PATH:
         if state.playback.path_index < len(state.playback.path):
             state.playback.path_index += 1
