@@ -38,7 +38,6 @@ def try_run(state: FrontendState, adapter, now_ms: int) -> None:
         return
     assert state.spider is not None
     try:
-        # 配合 adapter 的修改，不取回 temp_dir
         generator, maze = adapter.create_solver_generator(
             rows=BOARD_ROWS,
             cols=BOARD_COLS,
@@ -54,9 +53,8 @@ def try_run(state: FrontendState, adapter, now_ms: int) -> None:
     state.solver_generator = (generator, maze)
     state.solver_finished = False
 
-
 def animate_state(state: FrontendState) -> None:
-    # 使用建議的合併 if-elif 結構
+    
     if (state.phase == AppPhase.EXPLORATION and 
         not state.solver_finished and 
         state.solver_generator is not None):
@@ -74,7 +72,6 @@ def animate_state(state: FrontendState) -> None:
 
             state.solver_finished = True
             state.phase = AppPhase.PATH
-            # 移除 print("Validation:", validation)
 
     elif state.phase == AppPhase.PATH:
         if state.playback.path_index < len(state.playback.path):
