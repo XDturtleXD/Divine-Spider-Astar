@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import pygame
@@ -14,12 +14,22 @@ from spider_scene import MAX_SNACKS, Position
 # One tile ring around playable cells (indices -1 … rows inclusive).
 VISIBLE_EXTRA_CELLS = 2
 
+# Right-side layer panel sizing.
+LAYER_PANEL_WIDTH = 140
+LAYER_PANEL_GAP = 8
+LAYER_SLOT_PAD = 8
+
 
 @dataclass(frozen=True)
 class WindowLayout:
-    """Bottom toolbar rect (play field is derived in `Grid` via `fit_square_cells_in_rect`)."""
+    """Layout rects for the main grid area, right-side layer panel, and bottom toolbar.
+
+    The play field (square grid + border) is derived in `Grid` via
+    `fit_square_cells_in_rect`; this layout only carries the surrounding rects.
+    """
 
     button_strip: pygame.Rect
+    layer_panel: pygame.Rect
 
 
 def trim_sprite_to_opaque_bounds(surface: pygame.Surface) -> pygame.Surface:
@@ -109,6 +119,7 @@ class UiRects:
     snack_button: pygame.Rect
     run_button: pygame.Rect
     reset_button: pygame.Rect
+    layer_slot_rects: list[pygame.Rect] = field(default_factory=list)
 
 
 class SpiderRenderHandler:
@@ -132,6 +143,7 @@ class SpiderRenderHandler:
         raw_run = pygame.image.load(str(self.assets_dir / "start_button.png")).convert_alpha()
         raw_reset = pygame.image.load(str(self.assets_dir / "restart_button.png")).convert_alpha()
         raw_sn_btn = pygame.image.load(str(self.assets_dir / "place_snack_button.png")).convert_alpha()
+        raw_layer = pygame.image.load(str(self.assets_dir / "layer.png")).convert_alpha()
 
         self._src_snack = pygame.image.load(str(self.assets_dir / "Snack.png")).convert_alpha()
         self._src_spider = pygame.image.load(str(self.assets_dir / "Spider.png")).convert_alpha()
@@ -140,6 +152,7 @@ class SpiderRenderHandler:
         self._btn_reset_trim = trim_sprite_to_opaque_bounds(raw_reset)
         self._btn_snack_trim = trim_sprite_to_opaque_bounds(raw_sn_btn)
         self._btn_spider_trim = trim_sprite_to_opaque_bounds(self._src_spider)
+        self._layer_tile_trim = trim_sprite_to_opaque_bounds(raw_layer)
 
         self._border_tile: pygame.Surface | None = None
         self._ground_tile: pygame.Surface | None = None
@@ -155,7 +168,11 @@ class SpiderRenderHandler:
         self._font = pygame.font.SysFont("arial", 18)
 
     def compute_window_layout(self, surface: pygame.Surface) -> WindowLayout:
-        """Partition window: top = play field (square grid + border), bottom = buttons only."""
+        """Partition window into: top-left play field, top-right layer panel, bottom buttons.
+
+        The right-side `layer_panel` is sized via `LAYER_PANEL_WIDTH` but
+        clamped on narrow windows so the play grid still gets enough width.
+        """
         ww, wh = surface.get_size()
         inner_w = max(1, ww - 2 * self._MARGIN_SIDE)
         usable_h = max(1, wh - self._MARGIN_TOP - self._MARGIN_BOTTOM)
@@ -169,10 +186,20 @@ class SpiderRenderHandler:
             strip_h = min(strip_h, usable_h - 1)
         play_h = max(1, usable_h - strip_h)
 
+        # Carve right-side layer panel; clamp on narrow windows.
+        panel_w = min(LAYER_PANEL_WIDTH, max(60, inner_w // 4))
+        play_w = max(1, inner_w - panel_w - LAYER_PANEL_GAP)
+
         play_rect = pygame.Rect(
             self._MARGIN_SIDE,
             self._MARGIN_TOP,
-            inner_w,
+            play_w,
+            play_h,
+        )
+        layer_panel = pygame.Rect(
+            self._MARGIN_SIDE + play_w + LAYER_PANEL_GAP,
+            self._MARGIN_TOP,
+            panel_w,
             play_h,
         )
         button_strip = pygame.Rect(
@@ -186,7 +213,7 @@ class SpiderRenderHandler:
 
         self._last_button_strip_height = strip_h
 
-        return WindowLayout(button_strip=button_strip)
+        return WindowLayout(button_strip=button_strip, layer_panel=layer_panel)
 
     def _resolve_button_strip_height(self, inner_w: int) -> int:
         """Reserve a strip tall enough for four scaled button icons in a row."""
@@ -198,8 +225,12 @@ class SpiderRenderHandler:
         row_h = int(max_h * scale) + 2 * self._BUTTON_STRIP_PAD_Y
         return max(self._BUTTON_STRIP_MIN_H, row_h)
 
-    def apply_layout(self, surface: pygame.Surface) -> tuple[WindowLayout, UiRects]:
-        """Recompute layout for current window size; updates grid + assets if needed."""
+    def apply_layout(self, surface: pygame.Surface, num_layer_slots: int = 1) -> tuple[WindowLayout, UiRects]:
+        """Recompute layout for current window size; updates grid + assets if needed.
+
+        `num_layer_slots` controls how many layer hit-boxes go into `UiRects`
+        (callers pass `max(1, len(state.layers))`).
+        """
         ww, wh = surface.get_size()
         layout = self.compute_window_layout(surface)
         if (
@@ -209,7 +240,7 @@ class SpiderRenderHandler:
             self._last_window_size = (ww, wh)
             self._cached_cell_s = self.grid.cell_s
             self.reload_scaled_assets()
-        ui = self.compute_ui_rects(layout.button_strip)
+        ui = self.compute_ui_rects(layout, num_layer_slots)
         return layout, ui
 
     def reload_scaled_assets(self) -> None:
@@ -231,8 +262,9 @@ class SpiderRenderHandler:
         self._snack_button_surface = fit_surface_to_rect(self._btn_snack_trim, slot_rect)
         self._spider_button_surface = fit_surface_to_rect(self._btn_spider_trim, slot_rect)
 
-    def compute_ui_rects(self, strip: pygame.Rect) -> UiRects:
-        """Lay out four clickable slots entirely inside strip (never overlaps grid)."""
+    def compute_ui_rects(self, layout: WindowLayout, num_layer_slots: int = 1) -> UiRects:
+        """Lay out toolbar buttons inside button_strip and layer slots inside layer_panel."""
+        strip = layout.button_strip
         gap = self._BUTTON_GAP
         pad_x = 12
         inner = pygame.Rect(
@@ -253,10 +285,32 @@ class SpiderRenderHandler:
             snack_button=pygame.Rect(x0 + slot_w + gap, y0, slot_w, slot_h),
             run_button=pygame.Rect(x0 + (slot_w + gap) * 2, y0, slot_w, slot_h),
             reset_button=pygame.Rect(x0 + (slot_w + gap) * 3, y0, slot_w, slot_h),
+            layer_slot_rects=self._compute_layer_slot_rects(layout.layer_panel, num_layer_slots),
         )
 
+    def _compute_layer_slot_rects(self, panel: pygame.Rect, num_slots: int) -> list[pygame.Rect]:
+        """Vertical stack of slot rects inside `panel`. Caps at MAX_SNACKS + 1."""
+        cap = MAX_SNACKS + 1
+        num_slots = max(1, min(num_slots, cap))
+        pad = LAYER_SLOT_PAD
+        available_h = max(1, panel.height - 2 * pad)
+        slot_h = max(1, available_h // num_slots)
+        slot_w = max(1, panel.width - 2 * pad)
+        rects: list[pygame.Rect] = []
+        for i in range(num_slots):
+            rects.append(
+                pygame.Rect(
+                    panel.x + pad,
+                    panel.y + pad + i * slot_h,
+                    slot_w,
+                    slot_h,
+                )
+            )
+        return rects
+
     def draw(self, surface: pygame.Surface, state: FrontendState) -> UiRects:
-        layout, ui_rects = self.apply_layout(surface)
+        num_slots = max(1, len(state.layers))
+        layout, ui_rects = self.apply_layout(surface, num_slots)
 
         assert self._border_tile is not None
         assert self._ground_tile is not None
@@ -272,6 +326,27 @@ class SpiderRenderHandler:
                     surface.blit(self._border_tile, dest)
                 else:
                     surface.blit(self._ground_tile, dest)
+
+        in_sub_step = (
+            state.phase == AppPhase.PATH
+            and state.layers
+            and 0 <= state.selected_layer < len(state.layers)
+        )
+
+        if in_sub_step:
+            self._draw_sub_step_view(surface, state)
+        else:
+            self._draw_global_view(surface, state)
+
+        self._draw_layer_panel(surface, state, layout.layer_panel, ui_rects.layer_slot_rects)
+        self._draw_controls(surface, state, ui_rects)
+        self._draw_toast(surface, state, layout.button_strip.top)
+        return ui_rects
+
+    def _draw_global_view(self, surface: pygame.Surface, state: FrontendState) -> None:
+        """Original full-board rendering for PLACEMENT / EXPLORATION phases."""
+        assert self._snack_tile is not None
+        assert self._spider_tile is not None
 
         explored = state.playback.visible_explored()
         for row, col in explored:
@@ -298,9 +373,33 @@ class SpiderRenderHandler:
         if spider_pos is not None:
             surface.blit(self._spider_tile, self.grid.cell_rect(*spider_pos))
 
-        self._draw_controls(surface, state, ui_rects)
-        self._draw_toast(surface, state, layout.button_strip.top)
-        return ui_rects
+    def _draw_sub_step_view(self, surface: pygame.Surface, state: FrontendState) -> None:
+        """Per-layer view: only this layer's snacks + within-layer path + spider head."""
+        assert self._snack_tile is not None
+        assert self._spider_tile is not None
+
+        layer = state.layers[state.selected_layer]
+        # Clamp animation index within this layer's segment.
+        visible_within = max(0, min(state.playback.path_index, len(layer.segment)))
+
+        path_cells: list[Position] = [layer.entry] + list(layer.segment[:visible_within])
+        for row, col in path_cells:
+            path_rect = self.grid.cell_rect(row, col)
+            tint = pygame.Surface((path_rect.width, path_rect.height), pygame.SRCALPHA)
+            tint.fill((220, 35, 35, 145))
+            surface.blit(tint, path_rect)
+
+        # The segment ends at this layer's target snack; once fully walked, hide it.
+        eaten_now: set[Position] = set()
+        if layer.segment and visible_within == len(layer.segment):
+            eaten_now.add(layer.segment[-1])
+        for row, col in layer.snacks_remaining:
+            if (row, col) in eaten_now:
+                continue
+            surface.blit(self._snack_tile, self.grid.cell_rect(row, col))
+
+        spider_pos: Position = layer.entry if visible_within == 0 else layer.segment[visible_within - 1]
+        surface.blit(self._spider_tile, self.grid.cell_rect(*spider_pos))
 
     def _blit_icon_centered(self, surface: pygame.Surface, icon: pygame.Surface, slot: pygame.Rect) -> None:
         r = icon.get_rect(center=slot.center)
@@ -366,6 +465,50 @@ class SpiderRenderHandler:
         self._blit_icon_centered(surface, icon, rect)
         if disabled:
             self._blit_disabled_overlay(surface, rect, 160)
+
+    def _draw_layer_panel(
+        self,
+        surface: pygame.Surface,
+        state: FrontendState,
+        panel: pygame.Rect,
+        slots: list[pygame.Rect],
+    ) -> None:
+        """Render the right-side layer selector.
+
+        - Placement phase OR no layers yet: all slots dim (disabled), labelled "—".
+        - Selected layer: teal outline.
+        - Other layers: dimmed via dark overlay (so the selected one pops).
+        """
+        bg = pygame.Surface((panel.width, panel.height), pygame.SRCALPHA)
+        bg.fill((35, 35, 40, 200))
+        surface.blit(bg, panel)
+
+        disabled = state.phase == AppPhase.PLACEMENT or not state.layers
+
+        for i, slot in enumerate(slots):
+            # Reserve bottom strip for the label so icon never overlaps text.
+            label_band_h = min(22, max(14, slot.height // 4))
+            icon_target = pygame.Rect(
+                slot.x + 6,
+                slot.y + 6,
+                max(1, slot.width - 12),
+                max(1, slot.height - 12 - label_band_h),
+            )
+            icon = fit_surface_to_rect(self._layer_tile_trim, icon_target)
+            icon_rect = icon.get_rect(center=icon_target.center)
+            surface.blit(icon, icon_rect)
+
+            label_text = f"Layer {i}" if state.layers else "—"
+            text = self._font.render(label_text, True, (220, 220, 220))
+            text_rect = text.get_rect(center=(slot.centerx, slot.bottom - label_band_h // 2 - 2))
+            surface.blit(text, text_rect)
+
+            if disabled:
+                self._blit_disabled_overlay(surface, slot, 160)
+            elif i == state.selected_layer:
+                pygame.draw.rect(surface, (80, 220, 180), slot, 3, border_radius=4)
+            else:
+                self._blit_disabled_overlay(surface, slot, 95)
 
     def _draw_toast(self, surface: pygame.Surface, state: FrontendState, above_y: int | None = None) -> None:
         if not state.toast_message:
