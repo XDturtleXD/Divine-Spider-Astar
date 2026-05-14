@@ -108,7 +108,7 @@ class SpiderAssets:
         ww = max(window_size[0], 320)
         inner_w = max(1, ww - 2 * margin_side)
         gap = button_gap
-        slot_w = max(40, (inner_w - gap * 3) // 4)
+        slot_w = max(40, (inner_w - gap * 4) // 5)
         strip_inner_h = max(32, button_strip_height - 2 * button_strip_pad_y)
         slot_rect = pygame.Rect(0, 0, slot_w, strip_inner_h)
 

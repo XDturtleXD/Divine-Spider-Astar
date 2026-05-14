@@ -9,9 +9,14 @@ import tempfile
 from spider_scene import Position, build_maze_text
 
 
+PqEntry = tuple[int, Position, frozenset[Position]]
+
+
 @dataclass(frozen=True)
 class SolveResult:
     explored_positions: list[Position]
+    explored_remaining: list[frozenset[Position]]
+    explored_pq_top: list[tuple[PqEntry, ...]]
     path: list[Position]
     validation_result: str
 
@@ -22,6 +27,8 @@ class BackendAdapter:
     def solve(self, rows: int, cols: int, spider: Position, snacks: set[Position]) -> SolveResult:
         maze_text = build_maze_text(rows, cols, spider, snacks)
         explored_positions: list[Position] = []
+        explored_remaining: list[frozenset[Position]] = []
+        explored_pq_top: list[tuple[PqEntry, ...]] = []
         path: list[Position] = []
 
         # Imported lazily.
@@ -35,13 +42,18 @@ class BackendAdapter:
             generator = get_Astar_result(maze)
             try:
                 while True:
-                    explored_positions.append(next(generator))
+                    pos, remaining, pq_top = next(generator)
+                    explored_positions.append(pos)
+                    explored_remaining.append(remaining)
+                    explored_pq_top.append(pq_top)
             except StopIteration as stop_signal:
                 path = stop_signal.value or []
 
             validation = maze.isValidPath(path)
             return SolveResult(
                 explored_positions=explored_positions,
+                explored_remaining=explored_remaining,
+                explored_pq_top=explored_pq_top,
                 path=path,
                 validation_result=validation,
             )

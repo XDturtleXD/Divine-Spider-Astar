@@ -36,6 +36,8 @@ def parse_args() -> argparse.Namespace:
 
 def apply_solve_result(state: FrontendState, result: SolveResult) -> None:
     state.playback.explored = result.explored_positions
+    state.playback.explored_remaining = result.explored_remaining
+    state.playback.explored_pq_top = result.explored_pq_top
     state.playback.path = result.path
     state.playback.explored_index = 0
     state.playback.path_index = 0
@@ -64,6 +66,8 @@ def try_run(state: FrontendState, adapter, now_ms: int) -> None:
 
 
 def animate_state(state: FrontendState) -> None:
+    if state.paused:
+        return
     if state.phase == AppPhase.EXPLORATION:
         if state.playback.explored_index < len(state.playback.explored):
             state.playback.explored_index += 1
@@ -94,6 +98,10 @@ def handle_left_click(
     if ui_rects.run_button.collidepoint(mouse_pos):
         if state.phase == AppPhase.PLACEMENT:
             try_run(state, adapter, now_ms)
+        return
+    if ui_rects.pause_button.collidepoint(mouse_pos):
+        if state.phase != AppPhase.PLACEMENT:
+            state.paused = not state.paused
         return
     if ui_rects.reset_button.collidepoint(mouse_pos):
         state.clear_board()

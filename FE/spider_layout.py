@@ -12,9 +12,11 @@ from spider_scene import Position
 
 @dataclass(frozen=True)
 class WindowLayout:
-    """Bottom toolbar rect (play field is derived in `Grid` via `fit_square_cells_in_rect`)."""
+    """Bottom toolbar rect plus left/right side panels (play field is derived in `Grid`)."""
 
     button_strip: pygame.Rect
+    left_panel: pygame.Rect
+    right_panel: pygame.Rect
 
 
 @dataclass
@@ -82,6 +84,7 @@ class UiRects:
     spider_button: pygame.Rect
     snack_button: pygame.Rect
     run_button: pygame.Rect
+    pause_button: pygame.Rect
     reset_button: pygame.Rect
 
 
@@ -95,6 +98,9 @@ class LayoutManager:
     _BUTTON_STRIP_MIN_H = 100
     _BUTTON_STRIP_PAD_X = 12
     _BUTTON_STRIP_PAD_Y = 10
+    _PANEL_W = 200
+    _PANEL_GAP = 8
+    _MIN_BOARD_W = 320  # collapse panels if board would shrink past this
 
     def __init__(self, assets: SpiderAssets, grid: Grid) -> None:
         self.assets = assets
@@ -103,7 +109,7 @@ class LayoutManager:
         self._last_window_size: tuple[int, int] = (0, 0)
 
     def _compute_window_layout(self, surface: pygame.Surface) -> WindowLayout:
-        """Partition window into play field (top) and button strip (bottom)."""
+        """Partition window into [left panel | play field | right panel] + bottom button strip."""
         ww, wh = surface.get_size()
         inner_w = max(1, ww - 2 * self._MARGIN_SIDE)
         usable_h = max(1, wh - self._MARGIN_TOP - self._MARGIN_BOTTOM)
@@ -117,12 +123,26 @@ class LayoutManager:
             strip_h = min(strip_h, usable_h - 1)
         play_h = max(1, usable_h - strip_h)
 
-        play_rect = pygame.Rect(
-            self._MARGIN_SIDE,
-            self._MARGIN_TOP,
-            inner_w,
-            play_h,
-        )
+        # Reserve side panel widths only if the remaining board width stays usable.
+        panel_w = self._PANEL_W
+        gap = self._PANEL_GAP
+        board_w_if_panels = inner_w - 2 * panel_w - 2 * gap
+        if board_w_if_panels < self._MIN_BOARD_W:
+            panel_w = 0
+            gap = 0
+            board_w = inner_w
+        else:
+            board_w = board_w_if_panels
+
+        left_x = self._MARGIN_SIDE
+        board_x = left_x + panel_w + gap
+        right_x = board_x + board_w + gap
+        panels_top = self._MARGIN_TOP
+        panels_h = play_h
+
+        left_panel = pygame.Rect(left_x, panels_top, panel_w, panels_h)
+        right_panel = pygame.Rect(right_x, panels_top, panel_w, panels_h)
+        play_rect = pygame.Rect(board_x, panels_top, board_w, play_h)
         button_strip = pygame.Rect(
             self._MARGIN_SIDE,
             self._MARGIN_TOP + play_h,
@@ -132,18 +152,22 @@ class LayoutManager:
 
         self.grid.fit_square_cells_in_rect(play_rect)
 
-        return WindowLayout(button_strip=button_strip)
+        return WindowLayout(
+            button_strip=button_strip,
+            left_panel=left_panel,
+            right_panel=right_panel,
+        )
 
     def _resolve_button_strip_height(self, inner_w: int) -> int:
-        """Reserve height for four scaled button icons in a row."""
-        slot_w = max(48, (inner_w - self._BUTTON_GAP * 3) // 4)
+        """Reserve height for five button slots in a row."""
+        slot_w = max(48, (inner_w - self._BUTTON_GAP * 4) // 5)
         max_h = self.assets.trimmed_max_height
         scale = min(1.0, slot_w / self.assets.trimmed_max_width)
         row_h = int(max_h * scale) + 2 * self._BUTTON_STRIP_PAD_Y
         return max(self._BUTTON_STRIP_MIN_H, row_h)
 
     def _compute_ui_rects(self, strip: pygame.Rect) -> UiRects:
-        """Lay out four clickable button slots inside the button strip."""
+        """Lay out five clickable button slots inside the button strip."""
         gap = self._BUTTON_GAP
         inner = pygame.Rect(
             strip.x + self._BUTTON_STRIP_PAD_X,
@@ -151,10 +175,10 @@ class LayoutManager:
             max(1, strip.width - 2 * self._BUTTON_STRIP_PAD_X),
             max(1, strip.height - 2 * self._BUTTON_STRIP_PAD_Y),
         )
-        usable = max(inner.width - 3 * gap, 40)
-        slot_w = usable // 4
+        usable = max(inner.width - 4 * gap, 40)
+        slot_w = usable // 5
         slot_h = inner.height
-        excess = inner.width - (4 * slot_w + 3 * gap)
+        excess = inner.width - (5 * slot_w + 4 * gap)
         x0 = inner.x + max(0, excess // 2)
         y0 = inner.y
 
@@ -162,7 +186,8 @@ class LayoutManager:
             spider_button=pygame.Rect(x0, y0, slot_w, slot_h),
             snack_button=pygame.Rect(x0 + slot_w + gap, y0, slot_w, slot_h),
             run_button=pygame.Rect(x0 + (slot_w + gap) * 2, y0, slot_w, slot_h),
-            reset_button=pygame.Rect(x0 + (slot_w + gap) * 3, y0, slot_w, slot_h),
+            pause_button=pygame.Rect(x0 + (slot_w + gap) * 3, y0, slot_w, slot_h),
+            reset_button=pygame.Rect(x0 + (slot_w + gap) * 4, y0, slot_w, slot_h),
         )
 
     def update_layout(self, surface: pygame.Surface) -> tuple[WindowLayout, UiRects]:
