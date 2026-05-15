@@ -83,6 +83,9 @@ class FrontendState:
     paused: bool = False
     playback: PlaybackState = field(default_factory=PlaybackState)
 
+    solver_generator: object | None = None
+    solver_finished: bool = False
+
     def can_run(self) -> bool:
         return self.spider is not None and len(self.snacks) >= 1
 
@@ -103,6 +106,8 @@ class FrontendState:
         self.playback.reset()
         self.phase = AppPhase.PLACEMENT
         self.paused = False
+        self.solver_generator = None
+        self.solver_finished = False
 
     def place_at(self, cell: Position, now_ms: int) -> None:
         if self.phase != AppPhase.PLACEMENT:
@@ -115,11 +120,11 @@ class FrontendState:
             self.spider = cell
             return
 
-        # Snack placement mode.
         if self.spider == cell:
             self.set_toast("Cannot place snack on spider.", now_ms)
             return
         if cell in self.snacks:
+            self.set_toast("Cannot place multiple snacks in the same cell.", now_ms)
             return
         if len(self.snacks) >= MAX_SNACKS:
             self.set_toast(f"Snack limit reached ({MAX_SNACKS}/{MAX_SNACKS}).", now_ms)

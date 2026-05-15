@@ -67,7 +67,16 @@ gen = get_Astar_result(maze)
 
 `get_Astar_result` is a **Python generator**. It has two kinds of output:
 
-1. **`yield`** — emits each `(row, col)` position as A\* explores it (use this to animate the search)
+1. **`yield`** — emits a `dict` for each A\* expansion (use this to animate the search); keys:
+
+   | Key | Type | Description |
+   | --- | --- | --- |
+   | `"pos"` | `tuple[int, int]` | Grid cell just expanded |
+   | `"remaining"` | `frozenset[tuple[int, int]]` | Objectives not yet collected at this state |
+   | `"color"` | `int` | Stable index in `1..2**N` (where `N = len(objectives)`) — bitmask over the sorted original objectives, `+1`. With `MAX_OBJECTIVES = 3` this is exactly `1..8`. `1` = all collected (terminal); `2**N` = none collected (start). Use as a layer/color id in the frontend. |
+   | `"cost"` | `dict` | `{"g": int, "h": int}` — g-cost from start, h-cost (MST heuristic) |
+   | `"pq_top"` | `tuple[PqEntry, ...]` | Up to `PQ_SNAPSHOT_K` (5) cheapest live frontier entries, each `(f_cost, pos, remaining)` |
+
 2. **`return`** — the final shortest path as `list[(row, col)]`, retrieved via `StopIteration.value`
 
 #### Minimal usage (path only)
@@ -82,12 +91,12 @@ gen = get_Astar_result(maze)
 path = []
 try:
     while True:
-        next(gen)          # drive the generator with ignoring explored positions
+        next(gen)          # drive the generator, ignoring step data
 except StopIteration as e:
     path = e.value         # list[(row, col)]: the complete optimal path
 ```
 
-#### Full usage (explored positions + path + validation)
+#### Full usage (step data + path + validation)
 
 ```python
 from maze import Maze
@@ -96,17 +105,22 @@ from backend import get_Astar_result
 maze = Maze("maze.txt")
 gen = get_Astar_result(maze)
 
-# Step 1: stream explored positions for search animation
-explored = []
+steps = []
 path = []
 try:
     while True:
-        pos = next(gen)    # (row, col) of each node A* expands
-        explored.append(pos)
-except StopIteration as e:
-    path = e.value         # list[(row, col)]: the complete optimal path
+        step = next(gen)
+        steps.append(step)
 
-# Step 2: validate — determines how the frontend should render the result
+        pos       = step["pos"]            # (row, col) of the cell just expanded
+        remaining = step["remaining"]      # frozenset of objectives not yet collected
+        g         = step["cost"]["g"]      # cost from start to this cell
+        h         = step["cost"]["h"]      # MST heuristic estimate to collect remaining
+        pq_top    = step["pq_top"]         # up to 5 cheapest frontier candidates
+except StopIteration as e:
+    path = e.value                         # list[(row, col)]: the complete optimal path
+
+# Validate before committing to a success render
 result = maze.isValidPath(path)
 if result == "Valid":
     pass  # render success state
@@ -125,7 +139,7 @@ Expected flow:
 
 | Variable | Type | Description |
 | --- | --- | --- |
-| `pos` | `tuple[int, int]` | A grid cell explored during search — for visualizing the search frontier |
+| `step` | `dict` | One dict per A\* expansion — see key table above |
 | `path` | `list[tuple[int, int]]` | Ordered positions from start to the last objective; `[]` if the goal is unreachable |
 | `result` | `str` | `"Valid"` on success; a violation description string otherwise |
 
@@ -182,7 +196,7 @@ uv sync        # installs all runtime and dev dependencies from uv.lock
 uv run pytest
 ```
 
-Expected: **35 passed**. The suite covers:
+Expected: **68 passed**. The suite covers:
 
 | Test class | What it verifies |
 | --- | --- |
@@ -192,6 +206,12 @@ Expected: **35 passed**. The suite covers:
 | `TestMaze` | `Maze` correctly parses start, objectives, dimensions, and neighbor counts; loading from a file and from a string give identical results |
 | `TestIsValidPath` | `isValidPath` correctly rejects: empty path, path through a wall, path that skips a goal, path that doesn't end at a goal, non-consecutive steps, wrong argument types, and unnecessary revisits |
 | `TestMazeValidation` | `Maze(...)` raises `ValueError` for every invalid input: empty string, jagged rows, exceeding row/column limits, invalid characters, missing or duplicate start, missing objectives, and too many objectives |
+| `TestYieldFormat` | Each yielded step is a dict with the correct keys and types; `cost` g/h are non-negative; `pq_top` entries are valid `PqEntry` tuples bounded by `PQ_SNAPSHOT_K`; terminal step has empty `remaining` and `h == 0` |
+| `TestYieldCosts` | Initial step has `g == 0` and `pos == start`; initial `h` equals `mst_heuristic(start, all_objectives)`; terminal `g` equals returned path length; cached `h` matches a fresh `mst_heuristic` call for every step; step count equals `Maze.getStatesExplored()` |
+| `TestPqTop` | `pq_top` entries are sorted by `f_cost` ascending; never re-list the just-expanded state; terminal step never re-lists itself |
+| `TestUnreachableYield` | Unreachable mazes still yield ≥ 1 step before returning; no yielded step on an unreachable maze has empty `remaining`; the generator's return value is `[]` |
+| `TestRemainingColorIndex` | `remaining_color_index` is a stable bitmask-based hash: empty → `1`, full → `2**N`, distinct subsets → distinct indices, value bounded by `1..8` for 3 objectives, deterministic across calls |
+| `TestYieldColor` | Each step's `color` matches the helper run over the maze's original objectives; first step has `color == 2**N`; terminal step has `color == 1`; value stays in `1..8`; same `remaining` → same `color`; sequence is non-increasing along the run |
 
 ### 3. Manual Smoke Test
 
@@ -221,14 +241,14 @@ from backend import get_Astar_result
 
 maze = Maze("your_maze.txt")
 gen = get_Astar_result(maze)
-explored, path = [], []
+steps, path = [], []
 try:
     while True:
-        explored.append(next(gen))
+        steps.append(next(gen))
 except StopIteration as e:
     path = e.value
 
-print("Explored:", len(explored), "states")
+print("Explored:", len(steps), "states")
 print("Path:", path)
 print("Valid?", maze.isValidPath(path))
 ```

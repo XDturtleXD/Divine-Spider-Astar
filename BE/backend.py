@@ -1,4 +1,4 @@
-import heapq
+﻿import heapq
 from collections.abc import Generator
 
 from maze import Maze
@@ -13,6 +13,24 @@ PQ_SNAPSHOT_K = 5
 
 def manhattan(a: Pos, b: Pos) -> int:
     return abs(a[0] - b[0]) + abs(a[1] - b[1])
+
+
+def remaining_color_index(remaining: frozenset[Pos], objectives: tuple[Pos, ...]) -> int:
+    """
+    Map `remaining` to a stable color index in 1..2**len(objectives).
+
+    Each original objective is assigned a bit by its index in the sorted `objectives` tuple.
+    A bit is set iff that objective is still in `remaining`. Returns bitmask + 1.
+
+    With MAX_OBJECTIVES = 3 the range is exactly 1..8:
+      - all 3 still uncollected ??0b111 + 1 = 8
+      - all collected (terminal step) ??0b000 + 1 = 1
+    """
+    bits = 0
+    for i, obj in enumerate(objectives):
+        if obj in remaining:
+            bits |= 1 << i
+    return bits + 1
 
 
 def mst_heuristic(pos: Pos, remaining: frozenset[Pos]) -> int:
@@ -50,18 +68,23 @@ def mst_heuristic(pos: Pos, remaining: frozenset[Pos]) -> int:
 
 def get_Astar_result(
     maze: Maze,
-) -> Generator[tuple[Pos, frozenset[Pos], tuple[PqEntry, ...]], None, list[Pos]]:
+) -> Generator[dict, None, list[Pos]]:
     """
     Multi-objective A* search over the maze.
 
     State is (position, frozenset of remaining objectives)
-    so revisiting a cell with a different remaining set is treated as a distinct state —
-    necessary for correctness when objectives can be collected in any order.
+    so revisiting a cell with a different remaining set is treated as a distinct state ??    necessary for correctness when objectives can be collected in any order.
 
-    Yields (position, remaining, pq_top_k) per expansion. `pq_top_k` is up to
-    PQ_SNAPSHOT_K of the cheapest pending heap entries *after* current's neighbors
-    were pushed — i.e. the immediate future of the frontier. Returns the path
-    (first step after start → ... → last objective) via StopIteration.value.
+    Per expansion, yields a dict with keys:
+      - "pos": the grid cell just expanded (Pos)
+      - "remaining": frozenset of objectives not yet collected at this state
+      - "color": stable index in 1..2**len(objectives) for the remaining set ??                 use as a layer/color identifier in the frontend (see remaining_color_index)
+      - "cost": {"g": g_cost, "h": h_cost} for the expanded node
+      - "pq_top": up to PQ_SNAPSHOT_K cheapest live (non-visited) states,
+                  each as (f_cost, pos, remaining); the same cell may appear
+                  multiple times with different remaining sets (different layers)
+
+    Returns the path (first step after start ??last objective) via StopIteration.value.
     The start position itself is excluded from the returned path.
     """
     # Initialize the priority queue with the starting position and all objectives remaining
@@ -74,19 +97,24 @@ def get_Astar_result(
         raise ValueError("Maze is missing objectives.")
 
     initial_remaining: frozenset[Pos] = frozenset(objectives)
+    # Stable, sorted snapshot of the original objective set ??used as the bit-index basis for color hashing.
+    objectives_snapshot: tuple[Pos, ...] = tuple(sorted(initial_remaining))
     initial_state: State = (start, initial_remaining)
+    initial_h: int = mst_heuristic(start, initial_remaining)
     priority_queue: list[tuple[int, State]] = []
-    heapq.heappush(priority_queue, (0, initial_state))
+    heapq.heappush(priority_queue, (initial_h, initial_state))
 
     parents: dict[State, State | None] = {initial_state: None} # to reconstruct the path once we reach the goal
     g_cost: dict[State, int] = {initial_state: 0} # cost from start to this state
+    # h depends only on (pos, remaining), so it is invariant under cheaper-g updates ??safe to cache once per state.
+    h_cost: dict[State, int] = {initial_state: initial_h}
     visited: set[State] = set() # states already expanded; skip stale heap entries
 
     # Main A* loop
     # We loop until there are no more states to explore (i.e. the priority queue is empty)
     while priority_queue:
         # Pop the state with the lowest f_cost (g_cost + heuristic) from the priority queue
-        _, state = heapq.heappop(priority_queue)
+        f_priority, state = heapq.heappop(priority_queue)
 
         # Skip stale heap entries: if we already expanded this state via a cheaper path, ignore it
         if state in visited:
@@ -97,8 +125,8 @@ def get_Astar_result(
         maze._incrementStatesExplored()
 
         is_terminal = not remaining
-        # Push neighbors (only if non-terminal) before snapshotting the heap so
-        # the visualization sees the *future* frontier rather than the past.
+
+        # Expand neighbours before snapshotting so pq_top reflects the immediate future frontier.
         if not is_terminal:
             for n in maze.getNeighbors(pos[0], pos[1]):
                 new_remaining: frozenset[Pos] = remaining - {n}
@@ -107,21 +135,30 @@ def get_Astar_result(
 
                 if new_state not in g_cost or new_cost < g_cost[new_state]:
                     g_cost[new_state] = new_cost
-                    priority: int = new_cost + mst_heuristic(n, new_remaining)
+                    if new_state not in h_cost:
+                        h_cost[new_state] = mst_heuristic(n, new_remaining)
+                    priority: int = new_cost + h_cost[new_state]
                     heapq.heappush(priority_queue, (priority, new_state))
                     parents[new_state] = state
 
-        # Snapshot top-K of the heap. Skip stale entries that have already been
-        # expanded so the list reflects *live* upcoming work.
+        # Snapshot top-K live (non-visited) states from the heap.
         pq_top: list[PqEntry] = []
-        for f, (p, rem) in heapq.nsmallest(PQ_SNAPSHOT_K * 4, priority_queue):
-            if (p, rem) in visited:
+        for f, cand_state in heapq.nsmallest(PQ_SNAPSHOT_K * 4, priority_queue):
+            if cand_state in visited:
                 continue
-            pq_top.append((f, p, rem))
+            pq_top.append((f, cand_state[0], cand_state[1]))
             if len(pq_top) >= PQ_SNAPSHOT_K:
                 break
 
-        yield pos, remaining, tuple(pq_top)
+        g = g_cost[state]
+        h = h_cost[state]
+        yield {
+            "pos": pos, # the cell just expanded
+            "remaining": remaining, # objectives not yet collected at this state
+            "color": remaining_color_index(remaining, objectives_snapshot), # stable 1..2**N index for FE coloring
+            "cost": {"g": g, "h": h}, # separate g and h for visualization
+            "pq_top": tuple(pq_top), # up to PQ_SNAPSHOT_K cheapest live (non-visited) PQ entries, each as (f_cost, pos, remaining)
+        }
 
         if is_terminal:
             path: list[Pos] = []

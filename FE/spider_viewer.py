@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pygame
 
-from backend_adapter import BackendAdapter, SolveResult
+from backend_adapter import BackendAdapter
 from frontend_state import AppPhase, FrontendState, PlacementTool
 from spider_assets import SpiderAssets
 from spider_layout import Grid, LayoutManager, UiRects
@@ -34,23 +34,13 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def apply_solve_result(state: FrontendState, result: SolveResult) -> None:
-    state.playback.explored = result.explored_positions
-    state.playback.explored_remaining = result.explored_remaining
-    state.playback.explored_pq_top = result.explored_pq_top
-    state.playback.path = result.path
-    state.playback.explored_index = 0
-    state.playback.path_index = 0
-    state.phase = AppPhase.EXPLORATION
-
-
 def try_run(state: FrontendState, adapter, now_ms: int) -> None:
     if not state.can_run():
         state.set_toast("Need 1 spider and at least 1 snack.", now_ms)
         return
     assert state.spider is not None
     try:
-        result = adapter.solve(
+        generator, maze = adapter.create_solver_generator(
             rows=BOARD_ROWS,
             cols=BOARD_COLS,
             spider=state.spider,
@@ -60,23 +50,38 @@ def try_run(state: FrontendState, adapter, now_ms: int) -> None:
         state.set_toast(f"Backend error: {exc}", now_ms, duration_ms=2600)
         return
 
-    apply_solve_result(state, result)
-    if not result.path:
-        state.set_toast("No path found.", now_ms)
+    state.playback.reset()
+    state.phase = AppPhase.EXPLORATION
+    state.solver_generator = (generator, maze)
+    state.solver_finished = False
 
 
 def animate_state(state: FrontendState) -> None:
     if state.paused:
         return
-    if state.phase == AppPhase.EXPLORATION:
-        if state.playback.explored_index < len(state.playback.explored):
-            state.playback.explored_index += 1
-            return
-        state.phase = AppPhase.PATH
-        return
 
-    if state.phase == AppPhase.PATH and state.playback.path_index < len(state.playback.path):
-        state.playback.path_index += 1
+    if (
+        state.phase == AppPhase.EXPLORATION
+        and not state.solver_finished
+        and state.solver_generator is not None
+    ):
+        generator, _maze = state.solver_generator
+
+        try:
+            step = next(generator)
+            state.playback.explored.append(step["pos"])
+            state.playback.explored_remaining.append(step["remaining"])
+            state.playback.explored_pq_top.append(step["pq_top"])
+            state.playback.explored_index += 1
+        except StopIteration as stop_signal:
+            state.playback.path = stop_signal.value or []
+            state.playback.path_index = 0
+            state.solver_finished = True
+            state.phase = AppPhase.PATH
+
+    elif state.phase == AppPhase.PATH:
+        if state.playback.path_index < len(state.playback.path):
+            state.playback.path_index += 1
 
 
 def handle_left_click(
@@ -139,7 +144,6 @@ def main() -> None:
         while elapsed_for_step >= args.step_ms:
             animate_state(state)
             elapsed_for_step -= args.step_ms
-
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:

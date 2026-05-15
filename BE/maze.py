@@ -21,7 +21,7 @@ type Pos = tuple[int, int]
 
 MAX_ROWS = 100
 MAX_COLS = 100
-MAX_OBJECTIVES = 10
+MAX_OBJECTIVES = 3
 _VALID_CHARS = frozenset('#.H*')
 
 
