@@ -155,10 +155,8 @@ class LayoutManager:
         )
 
     def _resolve_button_strip_height(self, inner_w: int) -> int:
-        slot_w = max(48, (inner_w - self._BUTTON_GAP * 4) // 5)
         max_h = self.assets.trimmed_max_height
-        scale = min(1.0, slot_w / self.assets.trimmed_max_width)
-        row_h = int(max_h * scale) + 2 * self._BUTTON_STRIP_PAD_Y
+        row_h = max_h + 2 * self._BUTTON_STRIP_PAD_Y
         return max(self._BUTTON_STRIP_MIN_H, row_h)
 
     def _compute_ui_rects(self, strip: pygame.Rect) -> UiRects:
@@ -169,19 +167,32 @@ class LayoutManager:
             max(1, strip.width - 2 * self._BUTTON_STRIP_PAD_X),
             max(1, strip.height - 2 * self._BUTTON_STRIP_PAD_Y),
         )
-        usable = max(inner.width - 4 * gap, 40)
-        slot_w = usable // 5
-        slot_h = inner.height
-        excess = inner.width - (5 * slot_w + 4 * gap)
-        x0 = inner.x + max(0, excess // 2)
-        y0 = inner.y
+
+        assets = self.assets
+        h = assets.toolbar_height
+        pause_w = max(assets.pause_button_size[0], assets.resume_button_size[0])
+        button_sizes = [
+            assets.spider_button_size,
+            assets.snack_button_size,
+            assets.run_button_size,
+            (pause_w, h),
+            assets.reset_button_size,
+        ]
+        total_w = sum(w for w, _ in button_sizes) + gap * 4
+        x = inner.x + max(0, (inner.width - total_w) // 2)
+
+        rects: list[pygame.Rect] = []
+        for bw, bh in button_sizes:
+            y = inner.y + max(0, (inner.height - bh) // 2)
+            rects.append(pygame.Rect(x, y, bw, bh))
+            x += bw + gap
 
         return UiRects(
-            spider_button=pygame.Rect(x0, y0, slot_w, slot_h),
-            snack_button=pygame.Rect(x0 + slot_w + gap, y0, slot_w, slot_h),
-            run_button=pygame.Rect(x0 + (slot_w + gap) * 2, y0, slot_w, slot_h),
-            pause_button=pygame.Rect(x0 + (slot_w + gap) * 3, y0, slot_w, slot_h),
-            reset_button=pygame.Rect(x0 + (slot_w + gap) * 4, y0, slot_w, slot_h),
+            spider_button=rects[0],
+            snack_button=rects[1],
+            run_button=rects[2],
+            pause_button=rects[3],
+            reset_button=rects[4],
         )
 
     def update_layout(self, surface: pygame.Surface) -> tuple[WindowLayout, UiRects]:

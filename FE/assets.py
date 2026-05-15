@@ -32,6 +32,27 @@ def fit_surface_to_rect(surface: pygame.Surface, target: pygame.Rect) -> pygame.
     return pygame.transform.scale(surface, (nw, nh))
 
 
+def fit_surface_to_height(surface: pygame.Surface, target_h: int) -> pygame.Surface:
+    """Scale so height matches target_h; width follows aspect ratio."""
+    ih = surface.get_height()
+    if ih <= 0:
+        return surface
+    scale = target_h / ih
+    nw = max(1, int(round(surface.get_width() * scale)))
+    nh = max(1, target_h)
+    return pygame.transform.scale(surface, (nw, nh))
+
+
+def _toolbar_width_at_height(trims: tuple[pygame.Surface, ...], target_h: int) -> int:
+    total = 0
+    for surf in trims:
+        ih = surf.get_height()
+        if ih <= 0:
+            continue
+        total += max(1, int(round(surf.get_width() * target_h / ih)))
+    return total
+
+
 def tint_surface(surface: pygame.Surface, rgba: tuple[int, int, int, int]) -> pygame.Surface:
     """Apply a color tint only on non-transparent pixels."""
     overlay = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
@@ -99,6 +120,50 @@ class SpiderAssets:
         self.pause_button_tints = build_button_tints(self._btn_pause_trim)
         self.resume_button_tints = build_button_tints(self._btn_resume_trim)
 
+        self.toolbar_height = self.trimmed_max_height
+        self.spider_button_size = self._btn_spider_trim.get_size()
+        self.snack_button_size = self._btn_snack_trim.get_size()
+        self.run_button_size = self._btn_run_trim.get_size()
+        self.pause_button_size = self._btn_pause_trim.get_size()
+        self.resume_button_size = self._btn_resume_trim.get_size()
+        self.reset_button_size = self._btn_reset_trim.get_size()
+
+    def _scale_toolbar_buttons(
+        self,
+        target_h: int,
+        inner_w: int,
+        gap: int,
+    ) -> int:
+        """Scale all toolbar sprites to the same height; shrink h until row fits inner_w."""
+        trims = (
+            self._btn_spider_trim,
+            self._btn_snack_trim,
+            self._btn_run_trim,
+            self._btn_pause_trim,
+            self._btn_reset_trim,
+        )
+        h = min(target_h, self.trimmed_max_height)
+        min_h = 28
+        gaps_total = gap * 4
+        while h >= min_h:
+            if _toolbar_width_at_height(trims, h) + gaps_total <= inner_w:
+                break
+            h -= 1
+        h = max(min_h, h)
+
+        def apply(trim: pygame.Surface) -> tuple[dict[str, pygame.Surface], tuple[int, int]]:
+            scaled = fit_surface_to_height(trim, h)
+            return build_button_tints(scaled), scaled.get_size()
+
+        self.toolbar_height = h
+        self.spider_button_tints, self.spider_button_size = apply(self._btn_spider_trim)
+        self.snack_button_tints, self.snack_button_size = apply(self._btn_snack_trim)
+        self.run_button_tints, self.run_button_size = apply(self._btn_run_trim)
+        self.pause_button_tints, self.pause_button_size = apply(self._btn_pause_trim)
+        self.resume_button_tints, self.resume_button_size = apply(self._btn_resume_trim)
+        self.reset_button_tints, self.reset_button_size = apply(self._btn_reset_trim)
+        return h
+
     def reload_scaled(
         self,
         cell_s: int,
@@ -117,14 +182,5 @@ class SpiderAssets:
 
         ww = max(window_size[0], 320)
         inner_w = max(1, ww - 2 * margin_side)
-        gap = button_gap
-        slot_w = max(40, (inner_w - gap * 4) // 5)
         strip_inner_h = max(32, button_strip_height - 2 * button_strip_pad_y)
-        slot_rect = pygame.Rect(0, 0, slot_w, strip_inner_h)
-
-        self.run_button_tints = build_button_tints(fit_surface_to_rect(self._btn_run_trim, slot_rect))
-        self.reset_button_tints = build_button_tints(fit_surface_to_rect(self._btn_reset_trim, slot_rect))
-        self.snack_button_tints = build_button_tints(fit_surface_to_rect(self._btn_snack_trim, slot_rect))
-        self.spider_button_tints = build_button_tints(fit_surface_to_rect(self._btn_spider_trim, slot_rect))
-        self.pause_button_tints = build_button_tints(fit_surface_to_rect(self._btn_pause_trim, slot_rect))
-        self.resume_button_tints = build_button_tints(fit_surface_to_rect(self._btn_resume_trim, slot_rect))
+        self._scale_toolbar_buttons(strip_inner_h, inner_w, button_gap)
