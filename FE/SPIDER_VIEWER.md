@@ -86,17 +86,19 @@ The viewer copies explored/path into `PlaybackState` for stepping animation; **`
 
 ## Run
 
-From `Frontend/`:
+From repository root (recommended):
+
+```bash
+uv run python main.py viewer
+```
+
+From `FE/` (direct module):
 
 ```bash
 uv run python spider_viewer.py
 ```
 
-From repository root (same app):
-
-```bash
-uv run python FE/spider_viewer.py
-```
+Or: `uv run python FE/spider_viewer.py`
 
 
 ## Assets

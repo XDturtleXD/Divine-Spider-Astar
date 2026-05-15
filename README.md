@@ -15,7 +15,7 @@ Divine-Spider-Astar/
 │       ├── test_sample.py
 │       └── bigMaze.txt
 ├── FE/                  # Frontend: pygame visualization (in development)
-├── main.py              # Demo script — runs the backend end-to-end
+├── main.py              # Project entry point (terminal demo + pygame viewer)
 ├── pyproject.toml
 └── uv.lock
 ```
@@ -30,11 +30,44 @@ Requires Python 3.13+ and [uv](https://docs.astral.sh/uv/).
 uv sync
 ```
 
-## Run the Demo
+## Run
+
+All commands go through `main.py`:
+
+| Mode | Command | Description |
+|------|---------|-------------|
+| **demo** (default) | `uv run python main.py` | Run sample mazes in the terminal (explored count, path, validity) |
+| | `uv run python main.py demo` | Same as above |
+| **viewer** | `uv run python main.py viewer` | Interactive pygame UI (place spider/snacks, run A\*, animate search) |
+| **gui** | `uv run python main.py gui` | Alias for `viewer` |
+
+Terminal backend demos:
 
 ```bash
 uv run python main.py
+# same as:
+uv run python main.py demo
 ```
+
+Interactive pygame viewer:
+
+```bash
+uv run python main.py viewer
+# or:
+uv run python main.py gui
+
+# optional viewer flags, e.g.:
+uv run python main.py viewer --width 1200 --step-ms 120
+```
+
+Help:
+
+```bash
+uv run python main.py --help          # list modes
+uv run python main.py viewer --help   # viewer flags (--width, --fps, etc.)
+```
+
+You can still run the viewer module directly: `uv run python FE/spider_viewer.py`
 
 ## Run Tests
 

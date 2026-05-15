@@ -19,7 +19,7 @@ from spider_drawer import SceneDrawer
 from spider_scene import BOARD_COLS, BOARD_ROWS
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Spider maze renderer")
     parser.add_argument("--width", type=int, default=980, help="Initial window width")
     parser.add_argument("--height", type=int, default=720, help="Initial window height")
@@ -31,7 +31,7 @@ def parse_args() -> argparse.Namespace:
         default=str(Path(__file__).parent / "assets"),
         help="Directory containing frontend assets",
     )
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 
 def try_run(state: FrontendState, adapter, now_ms: int) -> None:
@@ -117,8 +117,8 @@ def handle_left_click(
         state.place_at(cell, now_ms)
 
 
-def main() -> None:
-    args = parse_args()
+def main(argv: list[str] | None = None) -> None:
+    args = parse_args(argv)
     pygame.init()
     pygame.display.set_caption("Divine Spider Viewer")
 
