@@ -182,7 +182,7 @@ uv sync        # installs all runtime and dev dependencies from uv.lock
 uv run pytest
 ```
 
-Expected: **22 passed**. The suite covers:
+Expected: **35 passed**. The suite covers:
 
 | Test class | What it verifies |
 | --- | --- |
@@ -190,7 +190,8 @@ Expected: **22 passed**. The suite covers:
 | `TestMultiGoal` | A\* visits **every** objective in a two-goal maze and ends at a goal |
 | `TestUnreachable` | A\* returns `[]` when the goal is walled off with no path |
 | `TestMaze` | `Maze` correctly parses start, objectives, dimensions, and neighbor counts; loading from a file and from a string give identical results |
-| `TestIsValidPath` | `isValidPath` correctly rejects: empty path, path through a wall, path that skips a goal, path that doesn't end at a goal, non-consecutive steps |
+| `TestIsValidPath` | `isValidPath` correctly rejects: empty path, path through a wall, path that skips a goal, path that doesn't end at a goal, non-consecutive steps, wrong argument types, and unnecessary revisits |
+| `TestMazeValidation` | `Maze(...)` raises `ValueError` for every invalid input: empty string, jagged rows, exceeding row/column limits, invalid characters, missing or duplicate start, missing objectives, and too many objectives |
 
 ### 3. Manual Smoke Test
 

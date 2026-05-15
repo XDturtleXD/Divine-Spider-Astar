@@ -13,7 +13,9 @@ import pygame
 
 from backend_adapter import BackendAdapter, SolveResult
 from frontend_state import AppPhase, FrontendState, PlacementTool
-from spider_render import Grid, SpiderRenderHandler, UiRects
+from spider_assets import SpiderAssets
+from spider_layout import Grid, LayoutManager, UiRects
+from spider_drawer import SceneDrawer
 from spider_scene import BOARD_COLS, BOARD_ROWS
 
 
@@ -34,6 +36,8 @@ def parse_args() -> argparse.Namespace:
 
 def apply_solve_result(state: FrontendState, result: SolveResult) -> None:
     state.playback.explored = result.explored_positions
+    state.playback.explored_remaining = result.explored_remaining
+    state.playback.explored_pq_top = result.explored_pq_top
     state.playback.path = result.path
     state.playback.explored_index = 0
     state.playback.path_index = 0
@@ -62,6 +66,8 @@ def try_run(state: FrontendState, adapter, now_ms: int) -> None:
 
 
 def animate_state(state: FrontendState) -> None:
+    if state.paused:
+        return
     if state.phase == AppPhase.EXPLORATION:
         if state.playback.explored_index < len(state.playback.explored):
             state.playback.explored_index += 1
@@ -93,6 +99,10 @@ def handle_left_click(
         if state.phase == AppPhase.PLACEMENT:
             try_run(state, adapter, now_ms)
         return
+    if ui_rects.pause_button.collidepoint(mouse_pos):
+        if state.phase != AppPhase.PLACEMENT:
+            state.paused = not state.paused
+        return
     if ui_rects.reset_button.collidepoint(mouse_pos):
         state.clear_board()
         return
@@ -112,9 +122,11 @@ def main() -> None:
     adapter = BackendAdapter()
     state = FrontendState()
 
+    assets = SpiderAssets(args.assets_dir)
     grid = Grid(BOARD_ROWS, BOARD_COLS)
-    renderer = SpiderRenderHandler(args.assets_dir, grid)
-    _, ui_rects = renderer.apply_layout(surface)
+    layout_manager = LayoutManager(assets, grid)
+    window_layout, ui_rects = layout_manager.update_layout(surface)
+    drawer = SceneDrawer(assets, grid)
     elapsed_for_step = 0.0
 
     running = True
@@ -128,11 +140,13 @@ def main() -> None:
             animate_state(state)
             elapsed_for_step -= args.step_ms
 
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
             elif event.type == pygame.VIDEORESIZE:
                 surface = pygame.display.set_mode((event.w, event.h), pygame.RESIZABLE)
+                window_layout, ui_rects = layout_manager.update_layout(surface)
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 handle_left_click(event.pos, state, ui_rects, grid, adapter, now_ms)
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 3:
@@ -140,7 +154,7 @@ def main() -> None:
                 if cell is not None:
                     state.remove_at(cell)
 
-        ui_rects = renderer.draw(surface, state)
+        drawer.draw(surface, state, window_layout, ui_rects)
         pygame.display.flip()
 
     pygame.quit()

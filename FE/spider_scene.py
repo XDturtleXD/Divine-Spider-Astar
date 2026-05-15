@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-BOARD_ROWS = 10
-BOARD_COLS = 10
-MAX_SNACKS = 5
+BOARD_ROWS = 8
+BOARD_COLS = 8
+MAX_SNACKS = 3
 
 
 Position = tuple[int, int]
