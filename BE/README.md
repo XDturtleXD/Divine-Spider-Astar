@@ -73,6 +73,7 @@ gen = get_Astar_result(maze)
    | --- | --- | --- |
    | `"pos"` | `tuple[int, int]` | Grid cell just expanded |
    | `"remaining"` | `frozenset[tuple[int, int]]` | Objectives not yet collected at this state |
+   | `"color"` | `int` | Stable index in `1..2**N` (where `N = len(objectives)`) — bitmask over the sorted original objectives, `+1`. With `MAX_OBJECTIVES = 3` this is exactly `1..8`. `1` = all collected (terminal); `2**N` = none collected (start). Use as a layer/color id in the frontend. |
    | `"cost"` | `dict` | `{"g": int, "h": int}` — g-cost from start, h-cost (MST heuristic) |
    | `"pq_top"` | `tuple[PqEntry, ...]` | Up to `PQ_SNAPSHOT_K` (5) cheapest live frontier entries, each `(f_cost, pos, remaining)` |
 
@@ -195,7 +196,7 @@ uv sync        # installs all runtime and dev dependencies from uv.lock
 uv run pytest
 ```
 
-Expected: **44 passed**. The suite covers:
+Expected: **68 passed**. The suite covers:
 
 | Test class | What it verifies |
 | --- | --- |
@@ -206,6 +207,11 @@ Expected: **44 passed**. The suite covers:
 | `TestIsValidPath` | `isValidPath` correctly rejects: empty path, path through a wall, path that skips a goal, path that doesn't end at a goal, non-consecutive steps, wrong argument types, and unnecessary revisits |
 | `TestMazeValidation` | `Maze(...)` raises `ValueError` for every invalid input: empty string, jagged rows, exceeding row/column limits, invalid characters, missing or duplicate start, missing objectives, and too many objectives |
 | `TestYieldFormat` | Each yielded step is a dict with the correct keys and types; `cost` g/h are non-negative; `pq_top` entries are valid `PqEntry` tuples bounded by `PQ_SNAPSHOT_K`; terminal step has empty `remaining` and `h == 0` |
+| `TestYieldCosts` | Initial step has `g == 0` and `pos == start`; initial `h` equals `mst_heuristic(start, all_objectives)`; terminal `g` equals returned path length; cached `h` matches a fresh `mst_heuristic` call for every step; step count equals `Maze.getStatesExplored()` |
+| `TestPqTop` | `pq_top` entries are sorted by `f_cost` ascending; never re-list the just-expanded state; terminal step never re-lists itself |
+| `TestUnreachableYield` | Unreachable mazes still yield ≥ 1 step before returning; no yielded step on an unreachable maze has empty `remaining`; the generator's return value is `[]` |
+| `TestRemainingColorIndex` | `remaining_color_index` is a stable bitmask-based hash: empty → `1`, full → `2**N`, distinct subsets → distinct indices, value bounded by `1..8` for 3 objectives, deterministic across calls |
+| `TestYieldColor` | Each step's `color` matches the helper run over the maze's original objectives; first step has `color == 2**N`; terminal step has `color == 1`; value stays in `1..8`; same `remaining` → same `color`; sequence is non-increasing along the run |
 
 ### 3. Manual Smoke Test
 

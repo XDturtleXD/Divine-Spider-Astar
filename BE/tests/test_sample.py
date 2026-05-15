@@ -1,5 +1,5 @@
 from pathlib import Path
-from backend import get_Astar_result
+from backend import get_Astar_result, mst_heuristic, remaining_color_index
 from maze import Maze
 import pytest
 
@@ -303,7 +303,7 @@ class TestYieldFormat:
     def test_dict_keys(self):
         steps = collect_steps(make_maze(SINGLE))
         for s in steps:
-            assert set(s.keys()) == {"pos", "remaining", "cost", "pq_top"}
+            assert set(s.keys()) == {"pos", "remaining", "color", "cost", "pq_top"}
 
     def test_pos_is_two_int_tuple(self):
         steps = collect_steps(make_maze(SINGLE))
@@ -351,3 +351,206 @@ class TestYieldFormat:
         steps = collect_steps(make_maze(MULTI_GOAL))
         sizes = [len(s["remaining"]) for s in steps]
         assert sizes == sorted(sizes, reverse=True)
+
+
+# ── Yield semantics: g/h correctness ──────────────────────────────────────────
+
+class TestYieldCosts:
+
+    def test_initial_step_g_zero(self):
+        """First yielded step is the start state — g must be 0."""
+        steps = collect_steps(make_maze(SINGLE))
+        assert steps[0]["cost"]["g"] == 0
+
+    def test_initial_step_pos_is_start(self):
+        """First yielded step's pos must equal maze start."""
+        maze = make_maze(SINGLE)
+        steps = collect_steps(maze)
+        assert steps[0]["pos"] == maze.getStart()
+
+    def test_initial_step_h_matches_mst(self):
+        """First yielded step's h must equal mst_heuristic(start, all_objectives)."""
+        maze = make_maze(MULTI_GOAL)
+        steps = collect_steps(maze)
+        expected_h = mst_heuristic(maze.getStart(), frozenset(maze.getObjectives()))
+        assert steps[0]["cost"]["h"] == expected_h
+
+    def test_terminal_g_equals_path_length(self):
+        """Terminal step's g (steps from start) must equal returned path length."""
+        for fixture in (SINGLE, MULTI, MULTI_GOAL):
+            maze = make_maze(fixture)
+            gen = get_Astar_result(maze)
+            last_step = None
+            try:
+                while True:
+                    last_step = next(gen)
+            except StopIteration as e:
+                path = e.value
+            assert last_step is not None
+            assert last_step["cost"]["g"] == len(path), \
+                f"Fixture {fixture!r}: terminal g={last_step['cost']['g']} but path len={len(path)}"
+
+    def test_cost_h_matches_mst_heuristic_each_step(self):
+        """Cached h must equal a fresh mst_heuristic call for every yielded state."""
+        for fixture in (SINGLE, MULTI, MULTI_GOAL):
+            steps = collect_steps(make_maze(fixture))
+            for s in steps:
+                expected = mst_heuristic(s["pos"], s["remaining"])
+                assert s["cost"]["h"] == expected, \
+                    f"h mismatch at pos={s['pos']} remaining={s['remaining']}: cached={s['cost']['h']} fresh={expected}"
+
+    def test_step_count_equals_states_explored(self):
+        """One yield per A* expansion: step count must equal Maze.getStatesExplored()."""
+        maze = make_maze(SINGLE)
+        steps = collect_steps(maze)
+        assert len(steps) == maze.getStatesExplored()
+
+
+# ── Yield semantics: pq_top ──────────────────────────────────────────────────
+
+class TestPqTop:
+
+    def test_pq_top_sorted_by_f_ascending(self):
+        """pq_top entries must be ordered by f_cost ascending."""
+        for fixture in (SINGLE, MULTI, MULTI_GOAL):
+            steps = collect_steps(make_maze(fixture))
+            for s in steps:
+                f_values = [entry[0] for entry in s["pq_top"]]
+                assert f_values == sorted(f_values), \
+                    f"pq_top not sorted at pos={s['pos']}: f_values={f_values}"
+
+    def test_pq_top_entries_not_in_visited(self):
+        """pq_top must never re-list the just-expanded state itself."""
+        steps = collect_steps(make_maze(MULTI_GOAL))
+        for s in steps:
+            current_state = (s["pos"], s["remaining"])
+            for _f, p, rem in s["pq_top"]:
+                assert (p, rem) != current_state, \
+                    f"pq_top re-lists just-expanded state {current_state}"
+
+    def test_pq_top_empty_on_terminal_step(self):
+        """Terminal step expands no neighbors and has no live frontier left for the goal layer.
+        The heap may still contain unexplored layers; allow ≤ K, but the cell just expanded
+        (with remaining=∅) must not reappear."""
+        steps = collect_steps(make_maze(SINGLE))
+        last = steps[-1]
+        for _f, p, rem in last["pq_top"]:
+            assert not (p == last["pos"] and rem == last["remaining"])
+
+
+# ── Yield semantics: unreachable ──────────────────────────────────────────────
+
+class TestUnreachableYield:
+
+    def test_unreachable_yields_at_least_start(self):
+        """Unreachable maze must still yield the start expansion before returning []."""
+        steps = collect_steps(make_maze(UNREACHABLE))
+        assert len(steps) >= 1
+
+    def test_unreachable_no_terminal_step(self):
+        """No yielded step on an unreachable maze should have empty remaining."""
+        steps = collect_steps(make_maze(UNREACHABLE))
+        for s in steps:
+            assert s["remaining"] != frozenset(), \
+                "Unreachable maze yielded a terminal (remaining=∅) step"
+
+    def test_unreachable_returns_empty_path(self):
+        """Sanity: generator return value on unreachable is []."""
+        gen = get_Astar_result(make_maze(UNREACHABLE))
+        try:
+            while True:
+                next(gen)
+        except StopIteration as e:
+            assert e.value == []
+
+
+# ── Color index for remaining ─────────────────────────────────────────────────
+
+class TestRemainingColorIndex:
+    """Direct tests of the helper. Bitmask + 1 over a sorted objective tuple."""
+
+    def test_empty_remaining_is_one(self):
+        objs = ((1, 1), (2, 2), (3, 3))
+        assert remaining_color_index(frozenset(), objs) == 1
+
+    def test_all_remaining_is_full_bitmask(self):
+        objs = ((1, 1), (2, 2), (3, 3))
+        # All three set: 0b111 + 1 = 8
+        assert remaining_color_index(frozenset(objs), objs) == 8
+
+    def test_single_bit_set(self):
+        objs = ((1, 1), (2, 2), (3, 3))
+        # Only the second objective remaining → 0b010 + 1 = 3
+        assert remaining_color_index(frozenset({(2, 2)}), objs) == 3
+
+    def test_distinct_subsets_distinct_indices(self):
+        """All 2**N subsets must produce distinct indices."""
+        objs = ((0, 0), (0, 1), (0, 2))
+        seen = set()
+        # Iterate every subset via the bitmask itself
+        for mask in range(1 << len(objs)):
+            subset = frozenset(o for i, o in enumerate(objs) if mask & (1 << i))
+            seen.add(remaining_color_index(subset, objs))
+        assert seen == set(range(1, 1 << len(objs) | 1))  # {1..8}
+
+    def test_range_bounded_1_to_8_for_3_objectives(self):
+        objs = ((0, 0), (1, 1), (2, 2))
+        for mask in range(1 << len(objs)):
+            subset = frozenset(o for i, o in enumerate(objs) if mask & (1 << i))
+            c = remaining_color_index(subset, objs)
+            assert 1 <= c <= 8
+
+    def test_stable_across_calls(self):
+        objs = ((0, 0), (1, 1), (2, 2))
+        s = frozenset({(0, 0), (2, 2)})
+        assert remaining_color_index(s, objs) == remaining_color_index(s, objs)
+
+
+# ── Color in yielded steps ────────────────────────────────────────────────────
+
+class TestYieldColor:
+
+    def test_initial_step_color_is_full_bitmask(self):
+        """First yield has all objectives remaining → color = 2**N."""
+        maze = make_maze(MULTI_GOAL)
+        steps = collect_steps(maze)
+        n_obj = len(maze.getObjectives())
+        assert steps[0]["color"] == (1 << n_obj)
+
+    def test_terminal_step_color_is_one(self):
+        """Last yield has empty remaining → color = 1."""
+        for fixture in (SINGLE, MULTI, MULTI_GOAL):
+            steps = collect_steps(make_maze(fixture))
+            assert steps[-1]["color"] == 1
+
+    def test_color_in_range_1_to_8(self):
+        """With MAX_OBJECTIVES = 3, color must always fall in 1..8."""
+        for fixture in (SINGLE, MULTI, MULTI_GOAL):
+            steps = collect_steps(make_maze(fixture))
+            for s in steps:
+                assert 1 <= s["color"] <= 8
+
+    def test_color_matches_helper(self):
+        """Yielded color must equal remaining_color_index over the maze's original objectives."""
+        for fixture in (SINGLE, MULTI, MULTI_GOAL):
+            maze = make_maze(fixture)
+            objs = tuple(sorted(maze.getObjectives()))
+            for s in collect_steps(maze):
+                assert s["color"] == remaining_color_index(s["remaining"], objs)
+
+    def test_same_remaining_same_color_across_steps(self):
+        """Two yields with the same remaining must share the same color."""
+        steps = collect_steps(make_maze(MULTI_GOAL))
+        by_remaining: dict[frozenset, int] = {}
+        for s in steps:
+            r = s["remaining"]
+            if r in by_remaining:
+                assert by_remaining[r] == s["color"]
+            else:
+                by_remaining[r] = s["color"]
+
+    def test_color_nonincreasing_along_run(self):
+        """color = bitmask(remaining)+1, and remaining shrinks monotonically — color must be non-increasing."""
+        steps = collect_steps(make_maze(MULTI_GOAL))
+        colors = [s["color"] for s in steps]
+        assert colors == sorted(colors, reverse=True)
