@@ -14,7 +14,7 @@ Divine-Spider-Astar/
 │   └── tests/
 │       ├── test_sample.py
 │       └── bigMaze.txt
-├── FE/                  # Frontend: pygame visualization (in development)
+├── FE/                  # Frontend: pygame viewer (see FE/FE.md)
 ├── main.py              # Project entry point (terminal demo + pygame viewer)
 ├── pyproject.toml
 └── uv.lock
@@ -67,7 +67,9 @@ uv run python main.py --help          # list modes
 uv run python main.py viewer --help   # viewer flags (--width, --fps, etc.)
 ```
 
-You can still run the viewer module directly: `uv run python FE/spider_viewer.py`
+You can still run the viewer module directly: `uv run python FE/viewer.py`
+
+See [`FE/FE.md`](FE/FE.md) for viewer UX, modules, and assets.
 
 ## Run Tests
 

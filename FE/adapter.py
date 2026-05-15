@@ -1,18 +1,10 @@
-"""Solver contract + backend adapter."""
+"""Backend bridge: maze text and A* generator."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Any, Generator
 
-from spider_scene import Position, build_maze_text
-
-
-@dataclass(frozen=True)
-class SolveResult:
-    """Matches the final path and validation structure."""
-    path: list[Position]
-    validation_result: str
+from config import Position, build_maze_text
 
 
 class BackendAdapter:
@@ -25,13 +17,8 @@ class BackendAdapter:
         spider: Position,
         snacks: set[Position],
     ) -> tuple[Generator[dict[str, Any], None, list[Position]], Any]:
-        """
-        Creates a generator for the A* search process.
-        Passes maze_text directly to the Maze class to avoid disk I/O.
-        """
         maze_text = build_maze_text(rows, cols, spider, snacks)
 
-        # Imported lazily.
         from backend import get_Astar_result  # type: ignore
         from maze import Maze  # type: ignore
 

@@ -1,11 +1,10 @@
-"""Shared scene constants and maze text conversion helpers."""
+"""Board constants and maze text conversion for the backend."""
 
 from __future__ import annotations
 
 BOARD_ROWS = 8
 BOARD_COLS = 8
 MAX_SNACKS = 3
-
 
 Position = tuple[int, int]
 

@@ -1,4 +1,4 @@
-"""Asset loading, trimming, and scaling for the spider renderer."""
+"""Asset loading, trimming, and scaling for the viewer."""
 
 from __future__ import annotations
 
@@ -43,6 +43,7 @@ def tint_surface(surface: pygame.Surface, rgba: tuple[int, int, int, int]) -> py
     tinted.blit(overlay, (0, 0))
     return tinted
 
+
 def build_button_tints(surface: pygame.Surface) -> dict[str, pygame.Surface]:
     return {
         "normal": tint_surface(surface, (0, 0, 0, 55)),
@@ -52,12 +53,11 @@ def build_button_tints(surface: pygame.Surface) -> dict[str, pygame.Surface]:
 
 
 class SpiderAssets:
-    """Loads, trims, and scales sprites for the spider grid renderer."""
+    """Loads, trims, and scales sprites for the grid renderer."""
 
     def __init__(self, assets_dir: str | Path) -> None:
         self.assets_dir = Path(assets_dir)
 
-        # Load assets
         self._src_border = pygame.image.load(str(self.assets_dir / "bolderTile.png")).convert_alpha()
         self._src_ground = pygame.image.load(str(self.assets_dir / "groundTile.png")).convert_alpha()
 
@@ -70,7 +70,6 @@ class SpiderAssets:
         self._src_snack = pygame.image.load(str(self.assets_dir / "Snack.png")).convert_alpha()
         self._src_spider = pygame.image.load(str(self.assets_dir / "Spider.png")).convert_alpha()
 
-        # Trim buttons
         self._btn_run_trim = trim_sprite_to_opaque_bounds(raw_run)
         self._btn_reset_trim = trim_sprite_to_opaque_bounds(raw_reset)
         self._btn_snack_trim = trim_sprite_to_opaque_bounds(raw_sn_btn)
@@ -78,7 +77,6 @@ class SpiderAssets:
         self._btn_pause_trim = trim_sprite_to_opaque_bounds(raw_pause)
         self._btn_resume_trim = trim_sprite_to_opaque_bounds(raw_resume)
 
-        # Buttons max size for layouting
         trimmed_buttons = [
             self._btn_run_trim,
             self._btn_reset_trim,
@@ -90,7 +88,6 @@ class SpiderAssets:
         self.trimmed_max_height = max(s.get_height() for s in trimmed_buttons)
         self.trimmed_max_width = max(s.get_width() for s in trimmed_buttons)
 
-        # Surfaces that dynamically resize for drawing
         self.border_tile = self._src_border
         self.ground_tile = self._src_ground
         self.snack_tile = self._src_snack
@@ -131,4 +128,3 @@ class SpiderAssets:
         self.spider_button_tints = build_button_tints(fit_surface_to_rect(self._btn_spider_trim, slot_rect))
         self.pause_button_tints = build_button_tints(fit_surface_to_rect(self._btn_pause_trim, slot_rect))
         self.resume_button_tints = build_button_tints(fit_surface_to_rect(self._btn_resume_trim, slot_rect))
-

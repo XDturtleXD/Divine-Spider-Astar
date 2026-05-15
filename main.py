@@ -52,9 +52,9 @@ def run_demo() -> None:
 
 
 def run_viewer(forward_argv: list[str]) -> None:
-    """Launch the pygame viewer (FE/spider_viewer.py)."""
+    """Launch the pygame viewer (FE/viewer.py)."""
     sys.path.insert(0, str(FE_DIR))
-    from spider_viewer import main as viewer_main
+    from viewer import main as viewer_main
 
     viewer_main(forward_argv)
 

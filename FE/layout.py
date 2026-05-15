@@ -1,4 +1,4 @@
-"""Layout management for interactive spider viewer: grid geometry, UI rects, asset scaling."""
+"""Grid geometry, window layout, and toolbar button rects."""
 
 from __future__ import annotations
 
@@ -6,8 +6,8 @@ from dataclasses import dataclass
 
 import pygame
 
-from spider_assets import SpiderAssets
-from spider_scene import Position
+from assets import SpiderAssets
+from config import Position
 
 
 @dataclass(frozen=True)
@@ -32,11 +32,11 @@ class Grid:
 
     @property
     def visible_rows(self) -> int:
-        return self.rows + 2  # include both borders
+        return self.rows + 2
 
     @property
     def visible_cols(self) -> int:
-        return self.cols + 2  # include both borders
+        return self.cols + 2
 
     def fit_square_cells_in_rect(self, rect: pygame.Rect) -> None:
         """Size square cells so the full border ring (rows+2 × cols+2) fits inside rect."""
@@ -56,8 +56,6 @@ class Grid:
         self.offset_y = rect.y + max(0, (rect.height - board_h) // 2)
 
     def cell_rect(self, row: int, col: int) -> pygame.Rect:
-        # row input in [-1, rows], col in [-1, cols]. Backend uses row 0 = top.
-        # Flip so user origin (0,0) renders at bottom-left.
         display_row = (self.rows - 1) - row
         return pygame.Rect(
             self.offset_x + (col + 1) * self.cell_s,
@@ -71,9 +69,9 @@ class Grid:
         ry = y - self.offset_y
         if rx < 0 or ry < 0:
             return None
-        col = rx // self.cell_s - 1  # -1 for left border
-        display_row = ry // self.cell_s - 1  # -1 for top border
-        row = (self.rows - 1) - display_row  # flip back to backend row
+        col = rx // self.cell_s - 1
+        display_row = ry // self.cell_s - 1
+        row = (self.rows - 1) - display_row
         if 0 <= row < self.rows and 0 <= col < self.cols:
             return (row, col)
         return None
@@ -81,8 +79,6 @@ class Grid:
 
 @dataclass
 class UiRects:
-    """Clickable UI button rects."""
-
     spider_button: pygame.Rect
     snack_button: pygame.Rect
     run_button: pygame.Rect
@@ -91,7 +87,7 @@ class UiRects:
 
 
 class LayoutManager:
-    """Handles all layout calculations and asset scaling. No drawing logic."""
+    """Layout calculations and asset scaling on resize. No drawing."""
 
     _MARGIN_SIDE = 8
     _MARGIN_TOP = 8
@@ -102,7 +98,7 @@ class LayoutManager:
     _BUTTON_STRIP_PAD_Y = 10
     _PANEL_W = 200
     _PANEL_GAP = 8
-    _MIN_BOARD_W = 320  # collapse panels if board would shrink past this
+    _MIN_BOARD_W = 320
 
     def __init__(self, assets: SpiderAssets, grid: Grid) -> None:
         self.assets = assets
@@ -111,7 +107,6 @@ class LayoutManager:
         self._last_window_size: tuple[int, int] = (0, 0)
 
     def _compute_window_layout(self, surface: pygame.Surface) -> WindowLayout:
-        """Partition window into [left panel | play field | right panel] + bottom button strip."""
         ww, wh = surface.get_size()
         inner_w = max(1, ww - 2 * self._MARGIN_SIDE)
         usable_h = max(1, wh - self._MARGIN_TOP - self._MARGIN_BOTTOM)
@@ -125,7 +120,6 @@ class LayoutManager:
             strip_h = min(strip_h, usable_h - 1)
         play_h = max(1, usable_h - strip_h)
 
-        # Reserve side panel widths only if the remaining board width stays usable.
         panel_w = self._PANEL_W
         gap = self._PANEL_GAP
         board_w_if_panels = inner_w - 2 * panel_w - 2 * gap
@@ -161,7 +155,6 @@ class LayoutManager:
         )
 
     def _resolve_button_strip_height(self, inner_w: int) -> int:
-        """Reserve height for five button slots in a row."""
         slot_w = max(48, (inner_w - self._BUTTON_GAP * 4) // 5)
         max_h = self.assets.trimmed_max_height
         scale = min(1.0, slot_w / self.assets.trimmed_max_width)
@@ -169,7 +162,6 @@ class LayoutManager:
         return max(self._BUTTON_STRIP_MIN_H, row_h)
 
     def _compute_ui_rects(self, strip: pygame.Rect) -> UiRects:
-        """Lay out five clickable button slots inside the button strip."""
         gap = self._BUTTON_GAP
         inner = pygame.Rect(
             strip.x + self._BUTTON_STRIP_PAD_X,
@@ -193,7 +185,6 @@ class LayoutManager:
         )
 
     def update_layout(self, surface: pygame.Surface) -> tuple[WindowLayout, UiRects]:
-        """Recompute layout for current window size; reload assets if needed."""
         layout = self._compute_window_layout(surface)
 
         wsize = surface.get_size()

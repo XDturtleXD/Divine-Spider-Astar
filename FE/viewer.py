@@ -1,22 +1,21 @@
-"""Interactive spider viewer."""
+"""Interactive pygame viewer entry point."""
 
 from __future__ import annotations
 
+import argparse
 import sys
 from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent.parent / "BE"))
 
-import argparse
-from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent / "BE"))
 
 import pygame
 
-from backend_adapter import BackendAdapter
-from frontend_state import AppPhase, FrontendState, PlacementTool
-from spider_assets import SpiderAssets
-from spider_layout import Grid, LayoutManager, UiRects
-from spider_drawer import SceneDrawer
-from spider_scene import BOARD_COLS, BOARD_ROWS
+from adapter import BackendAdapter
+from assets import SpiderAssets
+from config import BOARD_COLS, BOARD_ROWS
+from drawer import SceneDrawer
+from layout import Grid, LayoutManager, UiRects
+from state import AppPhase, FrontendState, PlacementTool
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -34,7 +33,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def try_run(state: FrontendState, adapter, now_ms: int) -> None:
+def try_run(state: FrontendState, adapter: BackendAdapter, now_ms: int) -> None:
     if not state.can_run():
         state.set_toast("Need 1 spider and at least 1 snack.", now_ms)
         return
@@ -89,7 +88,7 @@ def handle_left_click(
     state: FrontendState,
     ui_rects: UiRects,
     grid: Grid,
-    adapter,
+    adapter: BackendAdapter,
     now_ms: int,
 ) -> None:
     if ui_rects.spider_button.collidepoint(mouse_pos):

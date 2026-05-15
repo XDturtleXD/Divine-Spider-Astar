@@ -1,31 +1,19 @@
-"""Drawing logic for spider viewer scene: grid, entities, controls, toasts."""
+"""Drawing: grid, exploration overlays, path, panels, toolbar, toasts."""
 
 from __future__ import annotations
 
 import pygame
 
-from spider_layout import Grid, UiRects, WindowLayout
-from spider_assets import SpiderAssets
-from frontend_state import AppPhase, FrontendState, PlacementTool
-from spider_scene import MAX_SNACKS, Position
-
-
-# Alpha for each stripe in a multi-subset cell. Stripes don't overlap, so this
-# is the final opacity per stripe.
-_EXPLORED_ALPHA = 170
-
-
-def _build_palette() -> list[tuple[int, int, int]]:
-    """Eight well-spaced HSV hues. Snack cap is 3 → max 2^3 = 8 subsets, exact fit."""
-    palette: list[tuple[int, int, int]] = []
-    for hue in (0, 45, 90, 135, 180, 225, 270, 315):
-        c = pygame.Color(0)
-        c.hsva = (hue, 75, 95, 100)
-        palette.append((c.r, c.g, c.b))
-    return palette
-
-
-_PALETTE = _build_palette()
+from assets import SpiderAssets
+from config import MAX_SNACKS, Position
+from layout import Grid, UiRects, WindowLayout
+from state import AppPhase, FrontendState, PlacementTool
+from theme import (
+    BACKGROUND_RGB,
+    EXPLORATION_SUBSET_PALETTE,
+    EXPLORED_STRIPE_ALPHA,
+    PATH_LINE_RGB,
+)
 
 
 def draw_button(
@@ -60,7 +48,6 @@ class SceneDrawer:
         self._color_cache_signature: int = -1
 
     def _maybe_invalidate_color_cache(self, state: FrontendState) -> None:
-        """Reset palette assignments per solve run so first subset always gets palette[0]."""
         sig = id(state.playback.explored_remaining)
         if sig != self._color_cache_signature:
             self._color_cache_signature = sig
@@ -70,11 +57,8 @@ class SceneDrawer:
         cached = self._subset_color_cache.get(remaining)
         if cached is not None:
             return cached
-        # First-come assignment from the fixed palette. Max 8 subsets with snack cap 3,
-        # so we never wrap; if cap rises and we exceed the palette, wrap by modulo
-        # (duplicates accepted as a graceful overflow rather than crashing).
-        idx = len(self._subset_color_cache) % len(_PALETTE)
-        color = _PALETTE[idx]
+        idx = len(self._subset_color_cache) % len(EXPLORATION_SUBSET_PALETTE)
+        color = EXPLORATION_SUBSET_PALETTE[idx]
         self._subset_color_cache[remaining] = color
         return color
 
@@ -85,13 +69,10 @@ class SceneDrawer:
         window_layout: WindowLayout,
         ui_rects: UiRects,
     ) -> None:
-        """Render full scene using precomputed layout data."""
         self._maybe_invalidate_color_cache(state)
 
-        # Draw background
-        surface.fill((20, 20, 20))
+        surface.fill(BACKGROUND_RGB)
 
-        # Draw grid cells and borders
         for row in range(-1, self.grid.rows + 1):
             for col in range(-1, self.grid.cols + 1):
                 dest = self.grid.cell_rect(row, col)
@@ -100,9 +81,6 @@ class SceneDrawer:
                 else:
                     surface.blit(self.assets.ground_tile, dest)
 
-        # Spill view: every subset that has ever touched a cell keeps its color
-        # there. Multiple subsets share the cell by splitting it into vertical
-        # stripes — one stripe per subset, non-overlapping.
         cell_subsets: dict[Position, list[frozenset[Position]]] = {}
         for (pos, remaining) in state.playback.visible_explored():
             lst = cell_subsets.setdefault(pos, [])
@@ -112,17 +90,15 @@ class SceneDrawer:
         for pos, subsets in cell_subsets.items():
             cell_rect = self.grid.cell_rect(*pos)
             n = len(subsets)
-            # Use float math + integer rects so stripes tile the cell without gaps.
             for i, subset in enumerate(subsets):
                 x_start = cell_rect.x + (cell_rect.width * i) // n
                 x_end = cell_rect.x + (cell_rect.width * (i + 1)) // n
                 stripe_w = max(1, x_end - x_start)
                 color = self._color_for(subset)
                 stripe = pygame.Surface((stripe_w, cell_rect.height), pygame.SRCALPHA)
-                stripe.fill((*color, _EXPLORED_ALPHA))
+                stripe.fill((*color, EXPLORED_STRIPE_ALPHA))
                 surface.blit(stripe, (x_start, cell_rect.y))
 
-        # Highlight the cell A* just expanded so the eye can track the frontier head.
         if (
             state.phase == AppPhase.EXPLORATION
             and state.playback.explored_index > 0
@@ -133,38 +109,31 @@ class SceneDrawer:
             hl_w = max(2, self.grid.cell_s // 8)
             pygame.draw.rect(surface, (255, 255, 255), hl_rect, width=hl_w)
 
-        # Draw path as a black line connecting cell centers, starting at the spider.
         visible_path = state.playback.visible_path()
         if visible_path and state.spider is not None:
             points = [self.grid.cell_rect(*state.spider).center]
             points.extend(self.grid.cell_rect(r, c).center for r, c in visible_path)
             line_w = max(2, self.grid.cell_s // 6)
-            pygame.draw.lines(surface, (0, 0, 0), False, points, line_w)
+            pygame.draw.lines(surface, PATH_LINE_RGB, False, points, line_w)
 
-        # Draw snacks (skip consumed ones during path/exploration)
         consumed = set(visible_path) if state.phase in (AppPhase.PATH, AppPhase.EXPLORATION) else set()
         for row, col in sorted(state.snacks):
             if (row, col) in consumed:
                 continue
             surface.blit(self.assets.snack_tile, self.grid.cell_rect(row, col))
 
-        # Draw spider
         spider_pos = state.spider
         if state.phase == AppPhase.PATH and visible_path:
             spider_pos = visible_path[-1]
         if spider_pos is not None:
             surface.blit(self.assets.spider_tile, self.grid.cell_rect(*spider_pos))
 
-        # Draw side panels (skipped when layout collapsed them to zero width)
         self._draw_legend_panel(surface, state, window_layout.left_panel)
         self._draw_next_up_panel(surface, state, window_layout.right_panel)
-
-        # Draw UI controls and toast
         self._draw_controls(surface, state, ui_rects)
         self._draw_toast(surface, state, window_layout.button_strip.top)
 
     def _draw_controls(self, surface: pygame.Surface, state: FrontendState, ui_rects: UiRects) -> None:
-        """Render bottom toolbar buttons with correct states."""
         spider_disabled = state.phase != AppPhase.PLACEMENT
         spider_active = state.active_tool == PlacementTool.SPIDER
         draw_button(
@@ -214,7 +183,6 @@ class SceneDrawer:
         )
 
     def _draw_panel_background(self, surface: pygame.Surface, rect: pygame.Rect, title: str) -> pygame.Rect:
-        """Common panel chrome. Returns interior rect below the title row."""
         pygame.draw.rect(surface, (32, 32, 36), rect)
         pygame.draw.rect(surface, (70, 70, 78), rect, width=1)
         title_surf = self._panel_title_font.render(title, True, (235, 235, 235))
@@ -222,14 +190,7 @@ class SceneDrawer:
         return pygame.Rect(rect.x + 8, rect.y + 32, rect.width - 16, rect.height - 40)
 
     def _user_coord(self, pos: Position) -> Position:
-        """Backend (row 0 = top) → user (row 0 = bottom)."""
         return ((self.grid.rows - 1) - pos[0], pos[1])
-
-    def _format_subset_label(self, remaining: frozenset[Position]) -> str:
-        if not remaining:
-            return "all collected"
-        coords = ", ".join(f"({r},{c})" for r, c in sorted(self._user_coord(p) for p in remaining))
-        return f"{len(remaining)} left: {coords}"
 
     def _draw_legend_panel(self, surface: pygame.Surface, state: FrontendState, rect: pygame.Rect) -> None:
         if rect.width <= 0 or rect.height <= 0:
@@ -284,7 +245,6 @@ class SceneDrawer:
             surface.blit(placeholder, (interior.x, interior.y))
             return
 
-        # Header explains the ranking — f = g + h.
         header = self._panel_small_font.render(
             "Sorted by f = g + h (cheapest pops first)", True, (170, 170, 175)
         )
@@ -299,7 +259,6 @@ class SceneDrawer:
 
             color = self._color_for(remaining)
             row_rect = pygame.Rect(interior.x, row_top, interior.width, row_h - 4)
-            # Faint subset-color background so user can map the entry to a board stripe.
             bg = pygame.Surface(row_rect.size, pygame.SRCALPHA)
             bg.fill((*color, 60))
             surface.blit(bg, row_rect)
@@ -320,7 +279,6 @@ class SceneDrawer:
             surface.blit(sub_surf, (row_rect.x + 40, row_rect.y + 20))
 
     def _draw_toast(self, surface: pygame.Surface, state: FrontendState, above_y: int | None = None) -> None:
-        """Render temporary toast message if present."""
         if not state.toast_message:
             return
         text_surface = self._font.render(state.toast_message, True, (255, 255, 255))

@@ -1,11 +1,11 @@
-"""Frontend app state machine and placement logic."""
+"""App state machine and placement logic."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
 
-from spider_scene import MAX_SNACKS, Position
+from config import MAX_SNACKS, Position
 
 
 class AppPhase(str, Enum):
@@ -69,7 +69,6 @@ class PlaybackState:
         if self.explored_index == 0 or not self.explored_remaining:
             return None
         return self.explored_remaining[self.explored_index - 1]
-
 
 
 @dataclass
