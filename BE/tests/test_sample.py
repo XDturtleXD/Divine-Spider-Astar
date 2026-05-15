@@ -81,6 +81,18 @@ def get_astar_path(maze):
         return e.value
 
 
+def collect_steps(maze):
+    """Collect all yielded dicts from the A* generator (discards final path)."""
+    gen = get_Astar_result(maze)
+    steps = []
+    try:
+        while True:
+            steps.append(next(gen))
+    except StopIteration:
+        pass
+    return steps
+
+
 # ── Single-goal correctness ───────────────────────────────────────────────────
 
 class TestPathfinding:
@@ -276,3 +288,66 @@ class TestMazeValidation:
         border = "#" * 7
         with pytest.raises(ValueError, match="objective limit"):
             Maze(f"{border}\n{inner}\n{border}\n")
+
+
+# ── Yield format ──────────────────────────────────────────────────────────────
+
+from backend import PQ_SNAPSHOT_K
+
+class TestYieldFormat:
+
+    def test_each_step_is_dict(self):
+        steps = collect_steps(make_maze(SINGLE))
+        assert all(isinstance(s, dict) for s in steps)
+
+    def test_dict_keys(self):
+        steps = collect_steps(make_maze(SINGLE))
+        for s in steps:
+            assert set(s.keys()) == {"pos", "remaining", "cost", "pq_top"}
+
+    def test_pos_is_two_int_tuple(self):
+        steps = collect_steps(make_maze(SINGLE))
+        for s in steps:
+            pos = s["pos"]
+            assert isinstance(pos, tuple) and len(pos) == 2
+            assert all(isinstance(x, int) for x in pos)
+
+    def test_remaining_is_frozenset(self):
+        steps = collect_steps(make_maze(SINGLE))
+        for s in steps:
+            assert isinstance(s["remaining"], frozenset)
+
+    def test_cost_keys_and_nonnegative(self):
+        steps = collect_steps(make_maze(SINGLE))
+        for s in steps:
+            cost = s["cost"]
+            assert set(cost.keys()) == {"g", "h"}
+            assert cost["g"] >= 0
+            assert cost["h"] >= 0
+
+    def test_pq_top_is_tuple_of_entries(self):
+        """Each pq_top entry must be (int, 2-tuple, frozenset)."""
+        steps = collect_steps(make_maze(SINGLE))
+        for s in steps:
+            assert isinstance(s["pq_top"], tuple)
+            for f, pos, rem in s["pq_top"]:
+                assert isinstance(f, int)
+                assert isinstance(pos, tuple) and len(pos) == 2
+                assert isinstance(rem, frozenset)
+
+    def test_pq_top_length_bounded(self):
+        steps = collect_steps(make_maze(SINGLE))
+        assert all(len(s["pq_top"]) <= PQ_SNAPSHOT_K for s in steps)
+
+    def test_terminal_step_remaining_empty_and_h_zero(self):
+        """The last yielded step must have empty remaining and h == 0."""
+        steps = collect_steps(make_maze(SINGLE))
+        last = steps[-1]
+        assert last["remaining"] == frozenset()
+        assert last["cost"]["h"] == 0
+
+    def test_multi_goal_remaining_shrinks_monotonically(self):
+        """Across a two-goal maze, len(remaining) never increases between steps."""
+        steps = collect_steps(make_maze(MULTI_GOAL))
+        sizes = [len(s["remaining"]) for s in steps]
+        assert sizes == sorted(sizes, reverse=True)
