@@ -56,11 +56,12 @@ class Grid:
         self.offset_y = rect.y + max(0, (rect.height - board_h) // 2)
 
     def cell_rect(self, row: int, col: int) -> pygame.Rect:
-        # row input in [-1, rows], col in [-1, cols]
-        row, col = row + 1, col + 1
+        # row input in [-1, rows], col in [-1, cols]. Backend uses row 0 = top.
+        # Flip so user origin (0,0) renders at bottom-left.
+        display_row = (self.rows - 1) - row
         return pygame.Rect(
-            self.offset_x + col * self.cell_s,
-            self.offset_y + row * self.cell_s,
+            self.offset_x + (col + 1) * self.cell_s,
+            self.offset_y + (display_row + 1) * self.cell_s,
             self.cell_s,
             self.cell_s,
         )
@@ -70,8 +71,9 @@ class Grid:
         ry = y - self.offset_y
         if rx < 0 or ry < 0:
             return None
-        col = rx // self.cell_s - 1  # -1 for the top and left borders
-        row = ry // self.cell_s - 1
+        col = rx // self.cell_s - 1  # -1 for left border
+        display_row = ry // self.cell_s - 1  # -1 for top border
+        row = (self.rows - 1) - display_row  # flip back to backend row
         if 0 <= row < self.rows and 0 <= col < self.cols:
             return (row, col)
         return None

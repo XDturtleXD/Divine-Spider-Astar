@@ -246,11 +246,14 @@ class SceneDrawer:
         surface.blit(title_surf, (rect.x + 10, rect.y + 8))
         return pygame.Rect(rect.x + 8, rect.y + 32, rect.width - 16, rect.height - 40)
 
-    @staticmethod
-    def _format_subset_label(remaining: frozenset[Position]) -> str:
+    def _user_coord(self, pos: Position) -> Position:
+        """Backend (row 0 = top) → user (row 0 = bottom)."""
+        return ((self.grid.rows - 1) - pos[0], pos[1])
+
+    def _format_subset_label(self, remaining: frozenset[Position]) -> str:
         if not remaining:
             return "all collected"
-        coords = ", ".join(f"({r},{c})" for r, c in sorted(remaining))
+        coords = ", ".join(f"({r},{c})" for r, c in sorted(self._user_coord(p) for p in remaining))
         return f"{len(remaining)} left: {coords}"
 
     def _draw_legend_panel(self, surface: pygame.Surface, state: FrontendState, rect: pygame.Rect) -> None:
@@ -282,7 +285,7 @@ class SceneDrawer:
             if not subset:
                 label = "0  all collected"
             else:
-                coords = ", ".join(f"({r},{c})" for r, c in sorted(subset))
+                coords = ", ".join(f"({r},{c})" for r, c in sorted(self._user_coord(p) for p in subset))
                 label = f"{len(subset)}  {coords}"
             text_color = (255, 255, 255) if is_current else (200, 200, 205)
             text_surf = self._panel_font.render(label, True, text_color)
@@ -296,7 +299,7 @@ class SceneDrawer:
     def _draw_next_up_panel(self, surface: pygame.Surface, state: FrontendState, rect: pygame.Rect) -> None:
         if rect.width <= 0 or rect.height <= 0:
             return
-        interior = self._draw_panel_background(surface, rect, "Up next (priority queue)")
+        interior = self._draw_panel_background(surface, rect, "Up next")
 
         pq_top = state.playback.current_pq_top()
         if not pq_top:
@@ -332,7 +335,8 @@ class SceneDrawer:
             )
             surface.blit(rank_label, (row_rect.x + 6, row_rect.y + 2))
 
-            main_text = f"f={f_cost}  ({pos[0]},{pos[1]})"
+            ur, uc = self._user_coord(pos)
+            main_text = f"f={f_cost}  ({ur},{uc})"
             main_surf = self._panel_font.render(main_text, True, (255, 255, 255))
             surface.blit(main_surf, (row_rect.x + 40, row_rect.y + 2))
 
