@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Iterable
 
 from spider_scene import MAX_SNACKS, Position
 
@@ -40,64 +39,6 @@ class PlaybackState:
         return self.path[: self.path_index]
 
 
-@dataclass(frozen=True)
-class LayerView:
-    """Per-layer sub-step data for visualizing multi-snack A*.
-
-    `segment` is the within-layer path EXCLUDING the entry cell and ending
-    at the next snack to be eaten. Terminal layer has empty `segment`.
-    """
-
-    index: int
-    entry: Position
-    snacks_remaining: tuple[Position, ...]
-    segment: tuple[Position, ...]
-
-
-def path_to_layers(
-    spider_start: Position,
-    snacks: Iterable[Position],
-    path: list[Position],
-) -> list[LayerView]:
-    """Decompose a flat BE path into per-snack layers.
-
-    Caller must only invoke this with a non-empty `path`; otherwise use the
-    simulator. Each time a step lands on a still-uneaten snack, the current
-    layer's segment is closed (ending at that snack) and a new layer opens
-    with that snack as its entry. A terminal layer with empty segment is
-    always appended.
-    """
-    remaining: set[Position] = set(snacks)
-    layers: list[LayerView] = []
-    current_entry: Position = spider_start
-    current_segment: list[Position] = []
-
-    for pos in path:
-        current_segment.append(pos)
-        if pos in remaining:
-            layers.append(
-                LayerView(
-                    index=len(layers),
-                    entry=current_entry,
-                    snacks_remaining=tuple(sorted(remaining)),
-                    segment=tuple(current_segment),
-                )
-            )
-            remaining.discard(pos)
-            current_entry = pos
-            current_segment = []
-
-    layers.append(
-        LayerView(
-            index=len(layers),
-            entry=current_entry,
-            snacks_remaining=tuple(sorted(remaining)),
-            segment=(),
-        )
-    )
-    return layers
-
-
 @dataclass
 class FrontendState:
     spider: Position | None = None
@@ -107,8 +48,6 @@ class FrontendState:
     toast_message: str = ""
     toast_until_ms: int = 0
     playback: PlaybackState = field(default_factory=PlaybackState)
-    layers: list[LayerView] = field(default_factory=list)
-    selected_layer: int = 0
 
     def can_run(self) -> bool:
         return self.spider is not None and len(self.snacks) >= 1
@@ -124,22 +63,10 @@ class FrontendState:
         if self.toast_message and now_ms >= self.toast_until_ms:
             self.toast_message = ""
 
-    def set_layers(self, layers: list[LayerView]) -> None:
-        self.layers = list(layers)
-        self.selected_layer = 0
-
-    def set_selected_layer(self, idx: int) -> None:
-        if not self.layers:
-            return
-        if 0 <= idx < len(self.layers):
-            self.selected_layer = idx
-
     def clear_board(self) -> None:
         self.spider = None
         self.snacks.clear()
         self.playback.reset()
-        self.layers = []
-        self.selected_layer = 0
         self.phase = AppPhase.PLACEMENT
 
     def place_at(self, cell: Position, now_ms: int) -> None:
