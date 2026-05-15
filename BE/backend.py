@@ -131,10 +131,11 @@ def get_Astar_result(
                 break
 
         g = g_cost[state]
+        h = mst_heuristic(pos, remaining)
         yield {
             "pos": pos, # the cell just expanded
             "remaining": remaining, # objectives not yet collected at this state
-            "cost": {"g": g, "h": f_priority - g}, # separate g and h for visualization
+            "cost": {"g": g, "h": h}, # separate g and h for visualization
             "pq_top": tuple(pq_top), # up to PQ_SNAPSHOT_K cheapest live (non-visited) PQ entries, each as (f_cost, pos, remaining)
         }
 
