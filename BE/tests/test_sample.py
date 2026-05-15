@@ -271,8 +271,8 @@ class TestMazeValidation:
             Maze("#####\n#H..#\n#####\n")
 
     def test_too_many_objectives(self):
-        # 11 objectives — one over MAX_OBJECTIVES (10)
-        inner = "#H" + "*" * 11 + "#"   # 14 chars
-        border = "#" * 14
+        # 4 objectives — one over MAX_OBJECTIVES (3)
+        inner = "#H" + "*" * 4 + "#"   # 7 chars
+        border = "#" * 7
         with pytest.raises(ValueError, match="objective limit"):
             Maze(f"{border}\n{inner}\n{border}\n")
