@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 import pygame
 
-from assets import SpiderAssets
+from assets import SpiderAssets, TOOLBAR_MAX_BUTTON_H
 from config import Position
 
 
@@ -39,7 +39,7 @@ class Grid:
         return self.cols + 2
 
     def fit_square_cells_in_rect(self, rect: pygame.Rect) -> None:
-        """Size square cells so the full border ring (rows+2 × cols+2) fits inside rect."""
+        """Size square cells to fill rect; align board to bottom (just above toolbar)."""
         vw, vh = self.visible_cols, self.visible_rows
         if vw <= 0 or vh <= 0 or rect.width <= 0 or rect.height <= 0:
             self.cell_s = self.min_cell_px
@@ -53,7 +53,7 @@ class Grid:
         board_h = vh * cell_s
         self.cell_s = cell_s
         self.offset_x = rect.x + max(0, (rect.width - board_w) // 2)
-        self.offset_y = rect.y + max(0, (rect.height - board_h) // 2)
+        self.offset_y = rect.y + max(0, rect.height - board_h)
 
     def cell_rect(self, row: int, col: int) -> pygame.Rect:
         display_row = (self.rows - 1) - row
@@ -93,7 +93,6 @@ class LayoutManager:
     _MARGIN_TOP = 8
     _MARGIN_BOTTOM = 8
     _BUTTON_GAP = 14
-    _BUTTON_STRIP_MIN_H = 100
     _BUTTON_STRIP_PAD_X = 12
     _BUTTON_STRIP_PAD_Y = 10
     _PANEL_W = 200
@@ -106,19 +105,13 @@ class LayoutManager:
         self._cached_cell_s: int = -1
         self._last_window_size: tuple[int, int] = (0, 0)
 
-    def _compute_window_layout(self, surface: pygame.Surface) -> WindowLayout:
+    def _compute_window_layout(self, surface: pygame.Surface, strip_h: int) -> WindowLayout:
         ww, wh = surface.get_size()
         inner_w = max(1, ww - 2 * self._MARGIN_SIDE)
-        usable_h = max(1, wh - self._MARGIN_TOP - self._MARGIN_BOTTOM)
 
-        want_strip = self._resolve_button_strip_height(inner_w)
-        min_play = self.grid.min_cell_px * self.grid.visible_rows
-        strip_h = min(want_strip, max(usable_h - min_play, 52))
         strip_h = max(52, strip_h)
-        if strip_h >= usable_h:
-            strip_h = max(usable_h // 3, usable_h // 5)
-            strip_h = min(strip_h, usable_h - 1)
-        play_h = max(1, usable_h - strip_h)
+        strip_y = wh - self._MARGIN_BOTTOM - strip_h
+        play_h = max(1, strip_y - self._MARGIN_TOP)
 
         panel_w = self._PANEL_W
         gap = self._PANEL_GAP
@@ -134,17 +127,11 @@ class LayoutManager:
         board_x = left_x + panel_w + gap
         right_x = board_x + board_w + gap
         panels_top = self._MARGIN_TOP
-        panels_h = play_h
 
-        left_panel = pygame.Rect(left_x, panels_top, panel_w, panels_h)
-        right_panel = pygame.Rect(right_x, panels_top, panel_w, panels_h)
+        left_panel = pygame.Rect(left_x, panels_top, panel_w, play_h)
+        right_panel = pygame.Rect(right_x, panels_top, panel_w, play_h)
         play_rect = pygame.Rect(board_x, panels_top, board_w, play_h)
-        button_strip = pygame.Rect(
-            self._MARGIN_SIDE,
-            self._MARGIN_TOP + play_h,
-            inner_w,
-            strip_h,
-        )
+        button_strip = pygame.Rect(self._MARGIN_SIDE, strip_y, inner_w, strip_h)
 
         self.grid.fit_square_cells_in_rect(play_rect)
 
@@ -153,11 +140,6 @@ class LayoutManager:
             left_panel=left_panel,
             right_panel=right_panel,
         )
-
-    def _resolve_button_strip_height(self, inner_w: int) -> int:
-        max_h = self.assets.trimmed_max_height
-        row_h = max_h + 2 * self._BUTTON_STRIP_PAD_Y
-        return max(self._BUTTON_STRIP_MIN_H, row_h)
 
     def _compute_ui_rects(self, strip: pygame.Rect) -> UiRects:
         gap = self._BUTTON_GAP
@@ -196,20 +178,28 @@ class LayoutManager:
         )
 
     def update_layout(self, surface: pygame.Surface) -> tuple[WindowLayout, UiRects]:
-        layout = self._compute_window_layout(surface)
+        ww, wh = surface.get_size()
+        inner_w = max(1, ww - 2 * self._MARGIN_SIDE)
+        usable_h = max(1, wh - self._MARGIN_TOP - self._MARGIN_BOTTOM)
+        max_btn_h = min(
+            self.assets.trimmed_max_height,
+            TOOLBAR_MAX_BUTTON_H,
+            max(40, int(usable_h * 0.12)),
+        )
+        strip_h = self.assets.layout_toolbar(
+            inner_w,
+            self._BUTTON_GAP,
+            self._BUTTON_STRIP_PAD_Y,
+            max_button_h=max_btn_h,
+        )
+
+        layout = self._compute_window_layout(surface, strip_h)
 
         wsize = surface.get_size()
         if wsize != self._last_window_size or self._cached_cell_s != self.grid.cell_s:
             self._last_window_size = wsize
             self._cached_cell_s = self.grid.cell_s
-            self.assets.reload_scaled(
-                cell_s=self.grid.cell_s,
-                window_size=wsize,
-                button_strip_height=layout.button_strip.height,
-                margin_side=self._MARGIN_SIDE,
-                button_gap=self._BUTTON_GAP,
-                button_strip_pad_y=self._BUTTON_STRIP_PAD_Y,
-            )
+            self.assets.reload_scaled(self.grid.cell_s)
 
         ui_rects = self._compute_ui_rects(layout.button_strip)
         return layout, ui_rects

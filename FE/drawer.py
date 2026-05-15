@@ -260,7 +260,7 @@ class SceneDrawer:
             color = self._color_for(remaining)
             row_rect = pygame.Rect(interior.x, row_top, interior.width, row_h - 4)
             bg = pygame.Surface(row_rect.size, pygame.SRCALPHA)
-            bg.fill((*color, 60))
+            bg.fill((*color, EXPLORED_STRIPE_ALPHA))
             surface.blit(bg, row_rect)
             pygame.draw.rect(surface, (70, 70, 78), row_rect, width=1)
 

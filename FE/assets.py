@@ -65,6 +65,10 @@ def tint_surface(surface: pygame.Surface, rgba: tuple[int, int, int, int]) -> py
     return tinted
 
 
+# Cap toolbar sprite height so huge source PNGs do not dominate the window.
+TOOLBAR_MAX_BUTTON_H = 88
+
+
 def build_button_tints(surface: pygame.Surface) -> dict[str, pygame.Surface]:
     return {
         "normal": tint_surface(surface, (0, 0, 0, 55)),
@@ -127,6 +131,26 @@ class SpiderAssets:
         self.pause_button_size = self._btn_pause_trim.get_size()
         self.resume_button_size = self._btn_resume_trim.get_size()
         self.reset_button_size = self._btn_reset_trim.get_size()
+        self.layout_toolbar(900, 14, 10, max_button_h=TOOLBAR_MAX_BUTTON_H)
+
+    def layout_toolbar(
+        self,
+        inner_w: int,
+        gap: int,
+        pad_y: int,
+        *,
+        max_button_h: int,
+    ) -> int:
+        """Scale toolbar sprites to uniform height; return outer strip height."""
+        self._scale_toolbar_buttons(max_button_h, inner_w, gap)
+        return self.toolbar_height + 2 * pad_y
+
+    def scale_grid_tiles(self, cell_s: int) -> None:
+        cell_s = max(1, cell_s)
+        self.border_tile = pygame.transform.scale(self._src_border, (cell_s, cell_s))
+        self.ground_tile = pygame.transform.scale(self._src_ground, (cell_s, cell_s))
+        self.snack_tile = pygame.transform.scale(self._src_snack, (cell_s, cell_s))
+        self.spider_tile = pygame.transform.scale(self._src_spider, (cell_s, cell_s))
 
     def _scale_toolbar_buttons(
         self,
@@ -164,23 +188,6 @@ class SpiderAssets:
         self.reset_button_tints, self.reset_button_size = apply(self._btn_reset_trim)
         return h
 
-    def reload_scaled(
-        self,
-        cell_s: int,
-        window_size: tuple[int, int],
-        button_strip_height: int,
-        margin_side: int = 8,
-        button_gap: int = 14,
-        button_strip_pad_y: int = 10,
-    ) -> None:
-        """Recompute all cached scaled surfaces from source assets."""
-        cell_s = max(1, cell_s)
-        self.border_tile = pygame.transform.scale(self._src_border, (cell_s, cell_s))
-        self.ground_tile = pygame.transform.scale(self._src_ground, (cell_s, cell_s))
-        self.snack_tile = pygame.transform.scale(self._src_snack, (cell_s, cell_s))
-        self.spider_tile = pygame.transform.scale(self._src_spider, (cell_s, cell_s))
-
-        ww = max(window_size[0], 320)
-        inner_w = max(1, ww - 2 * margin_side)
-        strip_inner_h = max(32, button_strip_height - 2 * button_strip_pad_y)
-        self._scale_toolbar_buttons(strip_inner_h, inner_w, button_gap)
+    def reload_scaled(self, cell_s: int) -> None:
+        """Recompute grid tile surfaces after layout resize."""
+        self.scale_grid_tiles(cell_s)
