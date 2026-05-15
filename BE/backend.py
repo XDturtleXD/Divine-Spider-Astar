@@ -62,9 +62,9 @@ def get_Astar_result(
       - "pos": the grid cell just expanded (Pos)
       - "remaining": frozenset of objectives not yet collected at this state
       - "cost": {"g": g_cost, "h": h_cost} for the expanded node
-      - "pq_top": up to PQ_SNAPSHOT_K cheapest live (non-visited) PQ entries,
-                  each as (f_cost, pos, remaining); neighbours are pushed first
-                  so this reflects the immediate future frontier
+      - "pq_top": up to PQ_SNAPSHOT_K cheapest live (non-visited) states,
+                  each as (f_cost, pos, remaining); the same cell may appear
+                  multiple times with different remaining sets (different layers)
 
     Returns the path (first step after start → last objective) via StopIteration.value.
     The start position itself is excluded from the returned path.
@@ -116,17 +116,12 @@ def get_Astar_result(
                     heapq.heappush(priority_queue, (priority, new_state))
                     parents[new_state] = state
 
-        # Snapshot top-K live (non-visited, pos-deduplicated) entries from the heap.
+        # Snapshot top-K live (non-visited) states from the heap.
         pq_top: list[PqEntry] = []
-        seen_pos: set[Pos] = set()
         for f, cand_state in heapq.nsmallest(PQ_SNAPSHOT_K * 4, priority_queue):
             if cand_state in visited:
                 continue
-            cand_pos = cand_state[0]
-            if cand_pos in seen_pos:
-                continue
-            pq_top.append((f, cand_pos, cand_state[1]))
-            seen_pos.add(cand_pos)
+            pq_top.append((f, cand_state[0], cand_state[1]))
             if len(pq_top) >= PQ_SNAPSHOT_K:
                 break
 
