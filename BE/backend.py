@@ -5,6 +5,10 @@ from maze import Maze
 
 type Pos = tuple[int, int] # (row, col)
 type State = tuple[Pos, frozenset[Pos]] # (current position, remaining objectives)
+type PqEntry = tuple[int, Pos, frozenset[Pos]] # (f_cost, position, remaining)
+
+# Number of top priority-queue entries to expose per step for visualization.
+PQ_SNAPSHOT_K = 5
 
 
 def manhattan(a: Pos, b: Pos) -> int:
