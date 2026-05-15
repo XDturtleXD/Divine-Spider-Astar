@@ -193,13 +193,14 @@ class SceneDrawer:
             disabled=run_disabled,
         )
 
-        # Code-drawn pause/resume button (no sprite asset).
         pause_disabled = state.phase == AppPhase.PLACEMENT
-        pause_label = "Resume" if state.paused else "Stop"
-        self._draw_text_button(
+        pause_tints = (
+            self.assets.resume_button_tints if state.paused else self.assets.pause_button_tints
+        )
+        draw_button(
             surface,
+            pause_tints,
             ui_rects.pause_button,
-            pause_label,
             disabled=pause_disabled,
             active=state.paused and not pause_disabled,
         )
@@ -211,32 +212,6 @@ class SceneDrawer:
             ui_rects.reset_button,
             disabled=reset_disabled,
         )
-
-    def _draw_text_button(
-        self,
-        surface: pygame.Surface,
-        rect: pygame.Rect,
-        label: str,
-        disabled: bool = False,
-        active: bool = False,
-    ) -> None:
-        if disabled:
-            bg_color = (55, 55, 60)
-            border_color = (90, 90, 95)
-            text_color = (130, 130, 135)
-        elif active:
-            bg_color = (50, 160, 110)
-            border_color = (90, 220, 160)
-            text_color = (240, 255, 240)
-        else:
-            bg_color = (70, 90, 130)
-            border_color = (140, 170, 220)
-            text_color = (240, 240, 245)
-        pygame.draw.rect(surface, bg_color, rect, border_radius=8)
-        pygame.draw.rect(surface, border_color, rect, width=2, border_radius=8)
-        text_surf = self._font.render(label, True, text_color)
-        text_rect = text_surf.get_rect(center=rect.center)
-        surface.blit(text_surf, text_rect)
 
     def _draw_panel_background(self, surface: pygame.Surface, rect: pygame.Rect, title: str) -> pygame.Rect:
         """Common panel chrome. Returns interior rect below the title row."""

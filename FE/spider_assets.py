@@ -64,6 +64,8 @@ class SpiderAssets:
         raw_run = pygame.image.load(str(self.assets_dir / "start_button.png")).convert_alpha()
         raw_reset = pygame.image.load(str(self.assets_dir / "restart_button.png")).convert_alpha()
         raw_sn_btn = pygame.image.load(str(self.assets_dir / "place_snack_button.png")).convert_alpha()
+        raw_pause = pygame.image.load(str(self.assets_dir / "pause.png")).convert_alpha()
+        raw_resume = pygame.image.load(str(self.assets_dir / "Resume.png")).convert_alpha()
 
         self._src_snack = pygame.image.load(str(self.assets_dir / "Snack.png")).convert_alpha()
         self._src_spider = pygame.image.load(str(self.assets_dir / "Spider.png")).convert_alpha()
@@ -73,9 +75,18 @@ class SpiderAssets:
         self._btn_reset_trim = trim_sprite_to_opaque_bounds(raw_reset)
         self._btn_snack_trim = trim_sprite_to_opaque_bounds(raw_sn_btn)
         self._btn_spider_trim = trim_sprite_to_opaque_bounds(self._src_spider)
+        self._btn_pause_trim = trim_sprite_to_opaque_bounds(raw_pause)
+        self._btn_resume_trim = trim_sprite_to_opaque_bounds(raw_resume)
 
         # Buttons max size for layouting
-        trimmed_buttons = [self._btn_run_trim, self._btn_reset_trim, self._btn_snack_trim, self._btn_spider_trim]
+        trimmed_buttons = [
+            self._btn_run_trim,
+            self._btn_reset_trim,
+            self._btn_snack_trim,
+            self._btn_spider_trim,
+            self._btn_pause_trim,
+            self._btn_resume_trim,
+        ]
         self.trimmed_max_height = max(s.get_height() for s in trimmed_buttons)
         self.trimmed_max_width = max(s.get_width() for s in trimmed_buttons)
 
@@ -88,6 +99,8 @@ class SpiderAssets:
         self.reset_button_tints = build_button_tints(self._btn_reset_trim)
         self.snack_button_tints = build_button_tints(self._btn_snack_trim)
         self.spider_button_tints = build_button_tints(self._btn_spider_trim)
+        self.pause_button_tints = build_button_tints(self._btn_pause_trim)
+        self.resume_button_tints = build_button_tints(self._btn_resume_trim)
 
     def reload_scaled(
         self,
@@ -116,4 +129,6 @@ class SpiderAssets:
         self.reset_button_tints = build_button_tints(fit_surface_to_rect(self._btn_reset_trim, slot_rect))
         self.snack_button_tints = build_button_tints(fit_surface_to_rect(self._btn_snack_trim, slot_rect))
         self.spider_button_tints = build_button_tints(fit_surface_to_rect(self._btn_spider_trim, slot_rect))
+        self.pause_button_tints = build_button_tints(fit_surface_to_rect(self._btn_pause_trim, slot_rect))
+        self.resume_button_tints = build_button_tints(fit_surface_to_rect(self._btn_resume_trim, slot_rect))
 

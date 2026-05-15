@@ -18,6 +18,7 @@ It supports:
 - Right-click removes placed spider/snack.
 - Placing spider again moves the existing spider.
 - Spider and snack cannot overlap on placement.
+- **Pause / resume** (toolbar): during exploration or path playback, click to freeze animation (`pause.png`); click again to continue (`Resume.png`). Disabled (grayed) in placement mode.
 
 ## Visual States
 
@@ -103,6 +104,8 @@ Or: `uv run python FE/spider_viewer.py`
 
 ## Assets
 
-Files used by the current viewer: `bolderTile.png`, `groundTile.png`, `Snack.png`, `Spider.png`, `start_button.png`, `restart_button.png`, `place_snack_button.png`.
+Files used by the current viewer: `bolderTile.png`, `groundTile.png`, `Snack.png`, `Spider.png`, `start_button.png`, `restart_button.png`, `place_snack_button.png`, `pause.png`, `Resume.png`.
+
+The pause toolbar slot shows `pause.png` while animation is running and `Resume.png` after the user pauses.
 
 `assets/next_step_button.png` is present but **not referenced** by code (reserved for a future step/advance control).

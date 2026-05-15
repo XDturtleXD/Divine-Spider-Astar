@@ -73,8 +73,8 @@ def animate_state(state: FrontendState) -> None:
             state.playback.explored_remaining.append(step["remaining"])
             state.playback.explored_pq_top.append(step["pq_top"])
             state.playback.explored_index += 1
-        except StopIteration as stop_signal:
-            state.playback.path = stop_signal.value or []
+        except StopIteration as path_result:
+            state.playback.path = path_result.value or []
             state.playback.path_index = 0
             state.solver_finished = True
             state.phase = AppPhase.PATH
