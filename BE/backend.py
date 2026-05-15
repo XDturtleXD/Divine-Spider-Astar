@@ -1,4 +1,4 @@
-﻿import heapq
+import heapq
 from collections.abc import Generator
 
 from maze import Maze
@@ -23,8 +23,8 @@ def remaining_color_index(remaining: frozenset[Pos], objectives: tuple[Pos, ...]
     A bit is set iff that objective is still in `remaining`. Returns bitmask + 1.
 
     With MAX_OBJECTIVES = 3 the range is exactly 1..8:
-      - all 3 still uncollected ??0b111 + 1 = 8
-      - all collected (terminal step) ??0b000 + 1 = 1
+      - all 3 still uncollected → 0b111 + 1 = 8
+      - all collected (terminal step) → 0b000 + 1 = 1
     """
     bits = 0
     for i, obj in enumerate(objectives):
@@ -73,18 +73,20 @@ def get_Astar_result(
     Multi-objective A* search over the maze.
 
     State is (position, frozenset of remaining objectives)
-    so revisiting a cell with a different remaining set is treated as a distinct state ??    necessary for correctness when objectives can be collected in any order.
+    so revisiting a cell with a different remaining set is treated as a distinct state —
+    necessary for correctness when objectives can be collected in any order.
 
     Per expansion, yields a dict with keys:
       - "pos": the grid cell just expanded (Pos)
       - "remaining": frozenset of objectives not yet collected at this state
-      - "color": stable index in 1..2**len(objectives) for the remaining set ??                 use as a layer/color identifier in the frontend (see remaining_color_index)
+      - "color": stable index in 1..2**len(objectives) for the remaining set —
+                 use as a layer/color identifier in the frontend (see remaining_color_index)
       - "cost": {"g": g_cost, "h": h_cost} for the expanded node
       - "pq_top": up to PQ_SNAPSHOT_K cheapest live (non-visited) states,
                   each as (f_cost, pos, remaining); the same cell may appear
                   multiple times with different remaining sets (different layers)
 
-    Returns the path (first step after start ??last objective) via StopIteration.value.
+    Returns the path (first step after start → last objective) via StopIteration.value.
     The start position itself is excluded from the returned path.
     """
     # Initialize the priority queue with the starting position and all objectives remaining
@@ -97,7 +99,7 @@ def get_Astar_result(
         raise ValueError("Maze is missing objectives.")
 
     initial_remaining: frozenset[Pos] = frozenset(objectives)
-    # Stable, sorted snapshot of the original objective set ??used as the bit-index basis for color hashing.
+    # Stable, sorted snapshot of the original objective set — used as the bit-index basis for color hashing.
     objectives_snapshot: tuple[Pos, ...] = tuple(sorted(initial_remaining))
     initial_state: State = (start, initial_remaining)
     initial_h: int = mst_heuristic(start, initial_remaining)
@@ -106,7 +108,7 @@ def get_Astar_result(
 
     parents: dict[State, State | None] = {initial_state: None} # to reconstruct the path once we reach the goal
     g_cost: dict[State, int] = {initial_state: 0} # cost from start to this state
-    # h depends only on (pos, remaining), so it is invariant under cheaper-g updates ??safe to cache once per state.
+    # h depends only on (pos, remaining), so it is invariant under cheaper-g updates — safe to cache once per state.
     h_cost: dict[State, int] = {initial_state: initial_h}
     visited: set[State] = set() # states already expanded; skip stale heap entries
 
