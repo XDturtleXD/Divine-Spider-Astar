@@ -79,12 +79,14 @@ def get_Astar_result(
     Per expansion, yields a dict with keys:
       - "pos": the grid cell just expanded (Pos)
       - "remaining": frozenset of objectives not yet collected at this state
-      - "color": stable index in 1..2**len(objectives) for the remaining set —
+      - "color": stable index in 1, ..., 2^len(objectives) for the remaining set —
                  use as a layer/color identifier in the frontend (see remaining_color_index)
       - "cost": {"g": g_cost, "h": h_cost} for the expanded node
+      - "trace": tuple[Pos, ...] — path from start to `pos` along A* parent links;
+                 includes both endpoints (length == g + 1)
       - "pq_top": up to PQ_SNAPSHOT_K cheapest live (non-visited) states,
-                  each as (f_cost, pos, remaining); the same cell may appear
-                  multiple times with different remaining sets (different layers)
+                  each as (f_cost, g_cost, h_cost, pos, remaining) where f_cost == g_cost + h_cost;
+                  the same cell may appear multiple times with different remaining sets (different layers)
 
     Returns the path (first step after start → last objective) via StopIteration.value.
     The start position itself is excluded from the returned path.
