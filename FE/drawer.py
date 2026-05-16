@@ -277,8 +277,8 @@ class SceneDrawer:
 
         explainer_lines = (
             "g = steps from start",
-            "h = est. steps to remaining goals",
-            "f = g + h  (lowest f pops first)",
+            "h = est. steps to goals",
+            "f = g + h  (lowest first)",
         )
         header_y = interior.y
         for line in explainer_lines:
