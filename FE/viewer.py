@@ -1,25 +1,24 @@
-"""Interactive spider viewer."""
+"""Interactive pygame viewer entry point."""
 
 from __future__ import annotations
 
+import argparse
 import sys
 from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent.parent / "BE"))
 
-import argparse
-from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent / "BE"))
 
 import pygame
 
-from backend_adapter import BackendAdapter, SolveResult
-from frontend_state import AppPhase, FrontendState, PlacementTool
-from spider_assets import SpiderAssets
-from spider_layout import Grid, LayoutManager, UiRects
-from spider_drawer import SceneDrawer
-from spider_scene import BOARD_COLS, BOARD_ROWS
+from adapter import BackendAdapter
+from assets import SpiderAssets
+from config import BOARD_COLS, BOARD_ROWS
+from drawer import SceneDrawer
+from layout import Grid, LayoutManager, UiRects
+from state import AppPhase, FrontendState, PlacementTool
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Spider maze renderer")
     parser.add_argument("--width", type=int, default=980, help="Initial window width")
     parser.add_argument("--height", type=int, default=720, help="Initial window height")
@@ -31,10 +30,10 @@ def parse_args() -> argparse.Namespace:
         default=str(Path(__file__).parent / "assets"),
         help="Directory containing frontend assets",
     )
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 
-def try_run(state: FrontendState, adapter, now_ms: int) -> None:
+def try_run(state: FrontendState, adapter: BackendAdapter, now_ms: int) -> None:
     if not state.can_run():
         state.set_toast("Need 1 spider and at least 1 snack.", now_ms)
         return
@@ -55,23 +54,27 @@ def try_run(state: FrontendState, adapter, now_ms: int) -> None:
     state.solver_generator = (generator, maze)
     state.solver_finished = False
 
+
 def animate_state(state: FrontendState) -> None:
-    
-    if (state.phase == AppPhase.EXPLORATION and 
-        not state.solver_finished and 
-        state.solver_generator is not None):
-        
-        generator, maze = state.solver_generator
+    if state.paused:
+        return
+
+    if (
+        state.phase == AppPhase.EXPLORATION
+        and not state.solver_finished
+        and state.solver_generator is not None
+    ):
+        generator, _maze = state.solver_generator
 
         try:
-            next_position = next(generator)
-            state.playback.explored.append(next_position)
+            step = next(generator)
+            state.playback.explored.append(step["pos"])
+            state.playback.explored_remaining.append(step["remaining"])
+            state.playback.explored_pq_top.append(step["pq_top"])
             state.playback.explored_index += 1
-
-        except StopIteration as stop_signal:
-            state.playback.path = stop_signal.value or []
+        except StopIteration as path_result:
+            state.playback.path = path_result.value or []
             state.playback.path_index = 0
-
             state.solver_finished = True
             state.phase = AppPhase.PATH
 
@@ -85,7 +88,7 @@ def handle_left_click(
     state: FrontendState,
     ui_rects: UiRects,
     grid: Grid,
-    adapter,
+    adapter: BackendAdapter,
     now_ms: int,
 ) -> None:
     if ui_rects.spider_button.collidepoint(mouse_pos):
@@ -100,6 +103,10 @@ def handle_left_click(
         if state.phase == AppPhase.PLACEMENT:
             try_run(state, adapter, now_ms)
         return
+    if ui_rects.pause_button.collidepoint(mouse_pos):
+        if state.phase != AppPhase.PLACEMENT:
+            state.paused = not state.paused
+        return
     if ui_rects.reset_button.collidepoint(mouse_pos):
         state.clear_board()
         return
@@ -109,8 +116,8 @@ def handle_left_click(
         state.place_at(cell, now_ms)
 
 
-def main() -> None:
-    args = parse_args()
+def main(argv: list[str] | None = None) -> None:
+    args = parse_args(argv)
     pygame.init()
     pygame.display.set_caption("Divine Spider Viewer")
 
@@ -136,7 +143,6 @@ def main() -> None:
         while elapsed_for_step >= args.step_ms:
             animate_state(state)
             elapsed_for_step -= args.step_ms
-
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
