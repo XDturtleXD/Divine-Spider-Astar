@@ -7,6 +7,7 @@ from itertools import combinations
 import pygame
 
 from assets import SpiderAssets
+from backend import remaining_color_index
 from config import MAX_SNACKS, Position
 from layout import Grid, UiRects, WindowLayout
 from state import AppPhase, FrontendState, PlacementTool
@@ -58,24 +59,23 @@ class SceneDrawer:
                 self._prepopulate_subsets(state.snacks)
 
     def _prepopulate_subsets(self, snacks: set[Position]) -> None:
-        # Assign colors to every possible remaining-subset, largest first.
-        # Matches A* progress: starts with all goals remaining, ends with empty.
-        ordered_snacks = sorted(snacks)
+        # Iterate subsets largest-first so legend lists biggest remaining set first
+        # (matches A* progress). Palette color comes from BE's remaining_color_index,
+        # which is a stable bitmask over the original objectives — same subset always
+        # maps to the same palette slot regardless of insertion order.
+        ordered_snacks = tuple(sorted(snacks))
         n = len(ordered_snacks)
+        palette_size = len(EXPLORATION_SUBSET_PALETTE)
         for size in range(n, -1, -1):
             for combo in combinations(ordered_snacks, size):
                 subset = frozenset(combo)
-                idx = len(self._subset_color_cache) % len(EXPLORATION_SUBSET_PALETTE)
-                self._subset_color_cache[subset] = EXPLORATION_SUBSET_PALETTE[idx]
+                color_idx = remaining_color_index(subset, ordered_snacks)  # 1..2**n
+                self._subset_color_cache[subset] = EXPLORATION_SUBSET_PALETTE[
+                    (color_idx - 1) % palette_size
+                ]
 
     def _color_for(self, remaining: frozenset[Position]) -> tuple[int, int, int]:
-        cached = self._subset_color_cache.get(remaining)
-        if cached is not None:
-            return cached
-        idx = len(self._subset_color_cache) % len(EXPLORATION_SUBSET_PALETTE)
-        color = EXPLORATION_SUBSET_PALETTE[idx]
-        self._subset_color_cache[remaining] = color
-        return color
+        return self._subset_color_cache[remaining]
 
     def draw(
         self,
