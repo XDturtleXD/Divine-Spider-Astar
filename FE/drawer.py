@@ -211,7 +211,9 @@ class SceneDrawer:
         return pygame.Rect(rect.x + 8, rect.y + 32, rect.width - 16, rect.height - 40)
 
     def _user_coord(self, pos: Position) -> Position:
-        return ((self.grid.rows - 1) - pos[0], pos[1])
+        # FE displays (0, 0) at bottom-left. cell_rect already places BE row 0 at the bottom
+        # of the screen, so user-facing labels are the BE row/col unchanged.
+        return pos
 
     def _draw_legend_panel(self, surface: pygame.Surface, state: FrontendState, rect: pygame.Rect) -> None:
         if rect.width <= 0 or rect.height <= 0:
