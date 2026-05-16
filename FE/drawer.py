@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from itertools import combinations
+
 import pygame
 
 from assets import SpiderAssets
@@ -40,18 +42,31 @@ class SceneDrawer:
     def __init__(self, assets: SpiderAssets, grid: Grid) -> None:
         self.assets = assets
         self.grid = grid
-        self._font = pygame.font.SysFont("arial", 18)
-        self._panel_title_font = pygame.font.SysFont("arial", 16, bold=True)
-        self._panel_font = pygame.font.SysFont("arial", 13)
-        self._panel_small_font = pygame.font.SysFont("arial", 11)
+        self._font = pygame.font.SysFont("arial", 22)
+        self._panel_title_font = pygame.font.SysFont("arial", 20, bold=True)
+        self._panel_font = pygame.font.SysFont("arial", 16)
+        self._panel_small_font = pygame.font.SysFont("arial", 14)
         self._subset_color_cache: dict[frozenset[Position], tuple[int, int, int]] = {}
-        self._color_cache_signature: int = -1
+        self._color_cache_signature: tuple[frozenset[Position], bool] | None = None
 
     def _maybe_invalidate_color_cache(self, state: FrontendState) -> None:
-        sig = id(state.playback.explored_remaining)
+        sig = (frozenset(state.snacks), bool(state.playback.explored_remaining))
         if sig != self._color_cache_signature:
             self._color_cache_signature = sig
             self._subset_color_cache.clear()
+            if state.playback.explored_remaining and state.snacks:
+                self._prepopulate_subsets(state.snacks)
+
+    def _prepopulate_subsets(self, snacks: set[Position]) -> None:
+        # Assign colors to every possible remaining-subset, largest first.
+        # Matches A* progress: starts with all goals remaining, ends with empty.
+        ordered_snacks = sorted(snacks)
+        n = len(ordered_snacks)
+        for size in range(n, -1, -1):
+            for combo in combinations(ordered_snacks, size):
+                subset = frozenset(combo)
+                idx = len(self._subset_color_cache) % len(EXPLORATION_SUBSET_PALETTE)
+                self._subset_color_cache[subset] = EXPLORATION_SUBSET_PALETTE[idx]
 
     def _color_for(self, remaining: frozenset[Position]) -> tuple[int, int, int]:
         cached = self._subset_color_cache.get(remaining)
@@ -81,14 +96,14 @@ class SceneDrawer:
                 else:
                     surface.blit(self.assets.ground_tile, dest)
 
-        cell_subsets: dict[Position, list[frozenset[Position]]] = {}
+        cell_subsets: dict[Position, set[frozenset[Position]]] = {}
         for (pos, remaining) in state.playback.visible_explored():
-            lst = cell_subsets.setdefault(pos, [])
-            if remaining not in lst:
-                lst.append(remaining)
+            cell_subsets.setdefault(pos, set()).add(remaining)
 
-        for pos, subsets in cell_subsets.items():
+        subset_rank = {s: i for i, s in enumerate(self._subset_color_cache)}
+        for pos, subset_set in cell_subsets.items():
             cell_rect = self.grid.cell_rect(*pos)
+            subsets = sorted(subset_set, key=lambda s: subset_rank.get(s, len(subset_rank)))
             n = len(subsets)
             for i, subset in enumerate(subsets):
                 x_start = cell_rect.x + (cell_rect.width * i) // n
@@ -104,6 +119,12 @@ class SceneDrawer:
             and state.playback.explored_index > 0
             and state.playback.explored
         ):
+            trace = state.playback.current_trace()
+            if len(trace) >= 2:
+                trace_points = [self.grid.cell_rect(r, c).center for r, c in trace]
+                trace_w = max(1, self.grid.cell_s // 14)
+                pygame.draw.lines(surface, (255, 255, 255), False, trace_points, trace_w)
+
             current_pos = state.playback.explored[state.playback.explored_index - 1]
             hl_rect = self.grid.cell_rect(*current_pos)
             hl_w = max(2, self.grid.cell_s // 8)
@@ -197,22 +218,32 @@ class SceneDrawer:
             return
         interior = self._draw_panel_background(surface, rect, "Color legend")
 
-        history = state.playback.history_subsets()
-        if not history:
+        explainer_lines = (
+            "Each color = a unique set",
+            "of remaining goals at that",
+            "cell. White box = current.",
+        )
+        header_y = interior.y
+        for line in explainer_lines:
+            surf = self._panel_small_font.render(line, True, (170, 170, 175))
+            surface.blit(surf, (interior.x, header_y))
+            header_y += 18
+        list_y = header_y + 6
+
+        if not self._subset_color_cache:
             placeholder = self._panel_font.render(
                 "Run A* to see color mapping.", True, (160, 160, 165)
             )
-            surface.blit(placeholder, (interior.x, interior.y))
+            surface.blit(placeholder, (interior.x, list_y))
             return
 
         current = state.playback.current_remaining()
-        sw_size = 14
-        row_h = 22
-        row_y = interior.y
-        for subset in history:
+        sw_size = 16
+        row_h = 26
+        row_y = list_y
+        for subset, sw_color in self._subset_color_cache.items():
             if row_y + row_h > interior.bottom:
                 break
-            sw_color = self._color_for(subset)
             sw = pygame.Rect(interior.x, row_y + 4, sw_size, sw_size)
             pygame.draw.rect(surface, sw_color, sw)
             pygame.draw.rect(surface, (220, 220, 220), sw, width=1)
@@ -230,6 +261,11 @@ class SceneDrawer:
             surface.set_clip(clip)
             surface.blit(text_surf, (text_x, row_y + 3))
             surface.set_clip(None)
+
+            if is_current:
+                box = pygame.Rect(interior.x - 2, row_y, interior.width + 4, row_h - 2)
+                pygame.draw.rect(surface, (255, 255, 255), box, width=2)
+
             row_y += row_h
 
     def _draw_next_up_panel(self, surface: pygame.Surface, state: FrontendState, rect: pygame.Rect) -> None:
@@ -237,22 +273,28 @@ class SceneDrawer:
             return
         interior = self._draw_panel_background(surface, rect, "Up next")
 
+        explainer_lines = (
+            "g = steps from start",
+            "h = est. steps to remaining goals",
+            "f = g + h  (lowest f pops first)",
+        )
+        header_y = interior.y
+        for line in explainer_lines:
+            surf = self._panel_small_font.render(line, True, (170, 170, 175))
+            surface.blit(surf, (interior.x, header_y))
+            header_y += 18
+        list_y = header_y + 6
+
         pq_top = state.playback.current_pq_top()
         if not pq_top:
             placeholder = self._panel_font.render(
                 "Run A* to view the frontier.", True, (160, 160, 165)
             )
-            surface.blit(placeholder, (interior.x, interior.y))
+            surface.blit(placeholder, (interior.x, list_y))
             return
 
-        header = self._panel_small_font.render(
-            "Sorted by f = g + h (cheapest pops first)", True, (170, 170, 175)
-        )
-        surface.blit(header, (interior.x, interior.y))
-        list_y = interior.y + 18
-
-        row_h = 38
-        for i, (f_cost, pos, remaining) in enumerate(pq_top):
+        row_h = 60
+        for i, (f_cost, g_cost, h_cost, pos, remaining) in enumerate(pq_top):
             row_top = list_y + i * row_h
             if row_top + row_h > interior.bottom:
                 break
@@ -267,16 +309,20 @@ class SceneDrawer:
             rank_label = self._panel_title_font.render(
                 f"#{i + 1}", True, (255, 255, 255) if i == 0 else (210, 210, 215)
             )
-            surface.blit(rank_label, (row_rect.x + 6, row_rect.y + 2))
+            surface.blit(rank_label, (row_rect.x + 6, row_rect.y + 4))
 
             ur, uc = self._user_coord(pos)
-            main_text = f"f={f_cost}  ({ur},{uc})"
-            main_surf = self._panel_font.render(main_text, True, (255, 255, 255))
-            surface.blit(main_surf, (row_rect.x + 40, row_rect.y + 2))
+            f_text = f"f={f_cost}  ({ur},{uc})"
+            f_surf = self._panel_font.render(f_text, True, (255, 255, 255))
+            surface.blit(f_surf, (row_rect.x + 44, row_rect.y + 4))
 
-            sub_text = "all collected" if not remaining else f"{len(remaining)} left"
+            gh_text = f"g={g_cost}  h={h_cost}"
+            gh_surf = self._panel_small_font.render(gh_text, True, (220, 220, 225))
+            surface.blit(gh_surf, (row_rect.x + 44, row_rect.y + 24))
+
+            sub_text = "all collected" if not remaining else f"{len(remaining)} goal(s) left"
             sub_surf = self._panel_small_font.render(sub_text, True, (200, 200, 205))
-            surface.blit(sub_surf, (row_rect.x + 40, row_rect.y + 20))
+            surface.blit(sub_surf, (row_rect.x + 44, row_rect.y + 40))
 
     def _draw_toast(self, surface: pygame.Surface, state: FrontendState, above_y: int | None = None) -> None:
         if not state.toast_message:

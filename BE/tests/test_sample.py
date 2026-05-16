@@ -303,7 +303,7 @@ class TestYieldFormat:
     def test_dict_keys(self):
         steps = collect_steps(make_maze(SINGLE))
         for s in steps:
-            assert set(s.keys()) == {"pos", "remaining", "color", "cost", "pq_top"}
+            assert set(s.keys()) == {"pos", "remaining", "color", "cost", "trace", "pq_top"}
 
     def test_pos_is_two_int_tuple(self):
         steps = collect_steps(make_maze(SINGLE))
@@ -326,12 +326,15 @@ class TestYieldFormat:
             assert cost["h"] >= 0
 
     def test_pq_top_is_tuple_of_entries(self):
-        """Each pq_top entry must be (int, 2-tuple, frozenset)."""
+        """Each pq_top entry must be (f:int, g:int, h:int, pos:2-tuple, remaining:frozenset)."""
         steps = collect_steps(make_maze(SINGLE))
         for s in steps:
             assert isinstance(s["pq_top"], tuple)
-            for f, pos, rem in s["pq_top"]:
+            for f, g, h, pos, rem in s["pq_top"]:
                 assert isinstance(f, int)
+                assert isinstance(g, int) and g >= 0
+                assert isinstance(h, int) and h >= 0
+                assert f == g + h
                 assert isinstance(pos, tuple) and len(pos) == 2
                 assert isinstance(rem, frozenset)
 
@@ -424,7 +427,7 @@ class TestPqTop:
         steps = collect_steps(make_maze(MULTI_GOAL))
         for s in steps:
             current_state = (s["pos"], s["remaining"])
-            for _f, p, rem in s["pq_top"]:
+            for _f, _g, _h, p, rem in s["pq_top"]:
                 assert (p, rem) != current_state, \
                     f"pq_top re-lists just-expanded state {current_state}"
 
@@ -434,7 +437,7 @@ class TestPqTop:
         (with remaining=∅) must not reappear."""
         steps = collect_steps(make_maze(SINGLE))
         last = steps[-1]
-        for _f, p, rem in last["pq_top"]:
+        for _f, _g, _h, p, rem in last["pq_top"]:
             assert not (p == last["pos"] and rem == last["remaining"])
 
 

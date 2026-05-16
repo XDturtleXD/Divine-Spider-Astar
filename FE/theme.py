@@ -2,17 +2,17 @@
 
 from __future__ import annotations
 
-# Max 8 remaining-subset states (2^3 snacks). First-seen assignment in drawer.
-# Ground / earth palette: sand, olive, sage, clay, terracotta, slate — no reds (spider).
+# Max 8 remaining-subset states (2^3 snacks). High-contrast hues, no pure reds
+# (reserved for spider + path line). Spread roughly evenly around the hue wheel.
 EXPLORATION_SUBSET_PALETTE: tuple[tuple[int, int, int], ...] = (
-    (232, 208, 145),  # sand / cream
-    (215, 178, 55),   # mustard gold
-    (190, 118, 65),   # tan clay
-    (130, 100, 50),   # olive brown
-    (115, 170, 95),   # sage
-    (75, 135, 65),    # moss green
-    (205, 90, 50),    # terracotta
-    (70, 125, 155),   # slate dust
+    (240, 145, 40),   # orange
+    (240, 215, 60),   # yellow
+    (135, 205, 60),   # lime
+    (60, 185, 95),    # green
+    (55, 200, 205),   # cyan
+    (70, 130, 220),   # blue
+    (165, 90, 210),   # purple
+    (220, 80, 170),   # magenta
 )
 
 EXPLORED_STRIPE_ALPHA = 185
