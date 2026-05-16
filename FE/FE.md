@@ -36,7 +36,7 @@ Viewer flags: `uv run python main.py viewer --help` (`--width`, `--height`, `--f
 
 ## Visual theme
 
-Exploration colors live in [`theme.py`](theme.py): `EXPLORATION_SUBSET_PALETTE` (8 earthy ground-tone RGB entries for up to 2³ remaining-subset states — sand, mustard, clay, olive, sage, moss, terracotta, slate). Tuned for **dark gray** background, **light gray** tiles, and **red** spider (no reds in the subset palette). Legend and “Up next” panel use the same first-seen mapping as the board (`drawer.py`).
+Exploration colors live in [`theme.py`](theme.py): `EXPLORATION_SUBSET_PALETTE` (8 high-contrast RGB entries for up to 2³ remaining-subset states — orange, yellow, lime, green, cyan, blue, purple, magenta). Tuned for **dark gray** background, **light gray** tiles, and **red** spider (no reds in the subset palette). Palette slot per subset comes from BE's `remaining_color_index` (bitmask over original objectives) — same subset always maps to the same color. Legend and “Up next” panel look up via `drawer._color_for`.
 
 ## Modules
 
@@ -53,7 +53,7 @@ Exploration colors live in [`theme.py`](theme.py): `EXPLORATION_SUBSET_PALETTE` 
 
 ## Backend contract
 
-Each `next(generator)` yields a dict: `pos`, `remaining`, `color`, `cost` (`g`/`h`), `pq_top`. The viewer uses `pos`, `remaining`, and `pq_top` for animation and panels (display colors come from `theme.py`, not BE `color`).
+Each `next(generator)` yields a dict: `pos`, `remaining`, `color`, `cost` (`g`/`h`), `trace`, `pq_top`. The viewer uses `pos`, `remaining`, `trace`, and `pq_top` for animation and panels. Palette index for each subset comes from BE's `remaining_color_index` (called directly from `drawer.py`); `step["color"]` is the same value pre-computed per yield.
 
 Final path: `StopIteration.value` as `list[(row, col)]`. See [`BE/README.md`](../BE/README.md) for the full API.
 

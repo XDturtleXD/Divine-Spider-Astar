@@ -75,7 +75,8 @@ gen = get_Astar_result(maze)
    | `"remaining"` | `frozenset[tuple[int, int]]` | Objectives not yet collected at this state |
    | `"color"` | `int` | Stable index in `1..2**N` (where `N = len(objectives)`) — bitmask over the sorted original objectives, `+1`. With `MAX_OBJECTIVES = 3` this is exactly `1..8`. `1` = all collected (terminal); `2**N` = none collected (start). Use as a layer/color id in the frontend. |
    | `"cost"` | `dict` | `{"g": int, "h": int}` — g-cost from start, h-cost (MST heuristic) |
-   | `"pq_top"` | `tuple[PqEntry, ...]` | Up to `PQ_SNAPSHOT_K` (5) cheapest live frontier entries, each `(f_cost, pos, remaining)` |
+   | `"trace"` | `tuple[tuple[int, int], ...]` | Path from start to `pos` along A\* parent links; includes both endpoints (length == g + 1). Useful for drawing the current best route to the expanded cell. |
+   | `"pq_top"` | `tuple[PqEntry, ...]` | Up to `PQ_SNAPSHOT_K` (5) cheapest live frontier entries, each `(f_cost, g_cost, h_cost, pos, remaining)` where `f_cost == g_cost + h_cost` |
 
 2. **`return`** — the final shortest path as `list[(row, col)]`, retrieved via `StopIteration.value`
 

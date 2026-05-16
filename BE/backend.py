@@ -5,7 +5,7 @@ from maze import Maze
 
 type Pos = tuple[int, int] # (row, col)
 type State = tuple[Pos, frozenset[Pos]] # (current position, remaining objectives)
-type PqEntry = tuple[int, Pos, frozenset[Pos]] # (f_cost, position, remaining)
+type PqEntry = tuple[int, int, int, Pos, frozenset[Pos]] # (f_cost, g_cost, h_cost, position, remaining)
 
 # Number of top priority-queue entries to expose per step for visualization.
 PQ_SNAPSHOT_K = 5
@@ -79,12 +79,14 @@ def get_Astar_result(
     Per expansion, yields a dict with keys:
       - "pos": the grid cell just expanded (Pos)
       - "remaining": frozenset of objectives not yet collected at this state
-      - "color": stable index in 1..2**len(objectives) for the remaining set —
+      - "color": stable index in 1, ..., 2^len(objectives) for the remaining set —
                  use as a layer/color identifier in the frontend (see remaining_color_index)
       - "cost": {"g": g_cost, "h": h_cost} for the expanded node
+      - "trace": tuple[Pos, ...] — path from start to `pos` along A* parent links;
+                 includes both endpoints (length == g + 1)
       - "pq_top": up to PQ_SNAPSHOT_K cheapest live (non-visited) states,
-                  each as (f_cost, pos, remaining); the same cell may appear
-                  multiple times with different remaining sets (different layers)
+                  each as (f_cost, g_cost, h_cost, pos, remaining) where f_cost == g_cost + h_cost;
+                  the same cell may appear multiple times with different remaining sets (different layers)
 
     Returns the path (first step after start → last objective) via StopIteration.value.
     The start position itself is excluded from the returned path.
@@ -103,8 +105,13 @@ def get_Astar_result(
     objectives_snapshot: tuple[Pos, ...] = tuple(sorted(initial_remaining))
     initial_state: State = (start, initial_remaining)
     initial_h: int = mst_heuristic(start, initial_remaining)
-    priority_queue: list[tuple[int, State]] = []
-    heapq.heappush(priority_queue, (initial_h, initial_state))
+    # Heap entry: (f_cost, h_cost, push_counter, state). Tie-break on equal f: prefer smaller h
+    # (closer to goal). Counter is a monotonic int to keep tuples comparable when h also ties
+    # — frozenset is not orderable.
+    push_counter: int = 0
+    priority_queue: list[tuple[int, int, int, State]] = []
+    heapq.heappush(priority_queue, (initial_h, initial_h, push_counter, initial_state))
+    push_counter += 1
 
     parents: dict[State, State | None] = {initial_state: None} # to reconstruct the path once we reach the goal
     g_cost: dict[State, int] = {initial_state: 0} # cost from start to this state
@@ -115,8 +122,8 @@ def get_Astar_result(
     # Main A* loop
     # We loop until there are no more states to explore (i.e. the priority queue is empty)
     while priority_queue:
-        # Pop the state with the lowest f_cost (g_cost + heuristic) from the priority queue
-        f_priority, state = heapq.heappop(priority_queue)
+        # Pop the state with the lowest f_cost (g_cost + heuristic), breaking ties by smaller h.
+        f_priority, _h_tiebreak, _seq, state = heapq.heappop(priority_queue)
 
         # Skip stale heap entries: if we already expanded this state via a cheaper path, ignore it
         if state in visited:
@@ -140,26 +147,38 @@ def get_Astar_result(
                     if new_state not in h_cost:
                         h_cost[new_state] = mst_heuristic(n, new_remaining)
                     priority: int = new_cost + h_cost[new_state]
-                    heapq.heappush(priority_queue, (priority, new_state))
+                    heapq.heappush(priority_queue, (priority, h_cost[new_state], push_counter, new_state))
+                    push_counter += 1
                     parents[new_state] = state
 
         # Snapshot top-K live (non-visited) states from the heap.
+        # nsmallest returns entries sorted by the heap key (f, h, seq) — matches pop order.
         pq_top: list[PqEntry] = []
-        for f, cand_state in heapq.nsmallest(PQ_SNAPSHOT_K * 4, priority_queue):
+        for f, _h, _seq, cand_state in heapq.nsmallest(PQ_SNAPSHOT_K * 4, priority_queue):
             if cand_state in visited:
                 continue
-            pq_top.append((f, cand_state[0], cand_state[1]))
+            cand_g = g_cost[cand_state]
+            cand_h = h_cost[cand_state]
+            pq_top.append((f, cand_g, cand_h, cand_state[0], cand_state[1]))
             if len(pq_top) >= PQ_SNAPSHOT_K:
                 break
 
         g = g_cost[state]
         h = h_cost[state]
+        # Trace from start to the cell just expanded (inclusive of both endpoints).
+        trace: list[Pos] = []
+        s: State | None = state
+        while s is not None:
+            trace.append(s[0])
+            s = parents[s]
+        trace.reverse()
         yield {
             "pos": pos, # the cell just expanded
             "remaining": remaining, # objectives not yet collected at this state
             "color": remaining_color_index(remaining, objectives_snapshot), # stable 1..2**N index for FE coloring
             "cost": {"g": g, "h": h}, # separate g and h for visualization
-            "pq_top": tuple(pq_top), # up to PQ_SNAPSHOT_K cheapest live (non-visited) PQ entries, each as (f_cost, pos, remaining)
+            "trace": tuple(trace), # path from start to this cell along A* parents; includes both endpoints
+            "pq_top": tuple(pq_top), # up to PQ_SNAPSHOT_K cheapest live (non-visited) PQ entries, each as (f_cost, g_cost, h_cost, pos, remaining)
         }
 
         if is_terminal:

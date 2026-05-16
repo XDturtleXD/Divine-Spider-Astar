@@ -19,7 +19,8 @@ class PlacementTool(str, Enum):
     SNACK = "snack"
 
 
-PqEntry = tuple[int, Position, frozenset[Position]]
+PqEntry = tuple[int, int, int, Position, frozenset[Position]]
+# (f_cost, g_cost, h_cost, position, remaining); f_cost == g_cost + h_cost
 
 
 @dataclass
@@ -27,6 +28,7 @@ class PlaybackState:
     explored: list[Position] = field(default_factory=list)
     explored_remaining: list[frozenset[Position]] = field(default_factory=list)
     explored_pq_top: list[tuple[PqEntry, ...]] = field(default_factory=list)
+    explored_trace: list[tuple[Position, ...]] = field(default_factory=list)
     path: list[Position] = field(default_factory=list)
     explored_index: int = 0
     path_index: int = 0
@@ -35,9 +37,16 @@ class PlaybackState:
         self.explored.clear()
         self.explored_remaining.clear()
         self.explored_pq_top.clear()
+        self.explored_trace.clear()
         self.path.clear()
         self.explored_index = 0
         self.path_index = 0
+
+    def current_trace(self) -> tuple[Position, ...]:
+        """A* parent-chain path from start to the most recently expanded cell."""
+        if self.explored_index == 0 or not self.explored_trace:
+            return ()
+        return self.explored_trace[self.explored_index - 1]
 
     def current_pq_top(self) -> tuple[PqEntry, ...]:
         """Top-K priority-queue snapshot at the most recently animated step."""
