@@ -72,7 +72,7 @@ def main(argv: list[str] | None = None) -> None:
     if argv is None:
         argv = sys.argv[1:]
 
-    command = "demo"
+    command = "viewer"
     forward_argv: list[str] = []
 
     if argv:
