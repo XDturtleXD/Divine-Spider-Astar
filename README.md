@@ -1,26 +1,6 @@
 # Divine Spider — A\* Maze Solver
 
-![Tests Status](https://github.com/XDturtleXD/Divine-Spider-Astar/actions/workflows/tests.yml/badge.svg)
-
-DSA Project Group 6. A multi-objective maze solver using A\* search with an MST-based heuristic, with a pygame frontend for visualization.
-
-## Project Structure
-
-```
-Divine-Spider-Astar/
-├── BE/                  # Backend: maze parsing and A* algorithm
-│   ├── maze.py
-│   ├── backend.py
-│   └── tests/
-│       ├── test_sample.py
-│       └── bigMaze.txt
-├── FE/                  # Frontend: pygame viewer (see FE/FE.md)
-├── main.py              # Project entry point (terminal demo + pygame viewer)
-├── pyproject.toml
-└── uv.lock
-```
-
-See [`BE/README.md`](BE/README.md) for the full backend API reference and QA guide.
+[Code](https://github.com/XDturtleXD/Divine-Spider-Astar)
 
 ## Setup
 
@@ -70,6 +50,50 @@ uv run python main.py viewer --help   # viewer flags (--width, --fps, etc.)
 You can still run the viewer module directly: `uv run python FE/viewer.py`
 
 See [`FE/FE.md`](FE/FE.md) for viewer UX, modules, and assets.
+
+## User Guide
+
+Interactive pygame viewer. Board is **8×8** playable cells inside a 1-tile border ring. Origin `(0, 0)` is bottom-left.
+
+### Phases
+
+1. **Placement** — set up the board.
+2. **Exploration** — A\* expands cells; colored stripes mark explored states, white outline shows the cell just expanded.
+3. **Path** — red polyline from spider through all snacks.
+4. **Reset** — clear board, return to placement.
+
+### Controls
+
+| Action | How |
+|--------|-----|
+| Place / move spider | Toolbar → spider tool → left-click cell |
+| Place snack | Toolbar → snack tool → left-click cell (max **3**) |
+| Remove spider / snack | Right-click the cell (placement phase only) |
+| Start A\* search | `start_button` — needs 1 spider + 1–3 snacks |
+| Pause / resume animation | `pause` / `Resume` button (running phase only) |
+| Reset board | `restart_button` |
+
+### Rules
+
+- Exactly **1** spider, **1–3** snacks.
+- Spider and snack cannot share a cell.
+- Placing the spider again moves it.
+- Pause/resume disabled during placement.
+
+### Reading the visualization
+
+- Explored cells get a vertical color stripe per remaining-objective subset (palette in `FE/theme.py`).
+- Same remaining subset → same color across the run.
+- Left panel: color legend. Right panel: top-5 priority-queue entries (`Up next`).
+- During **Path** phase: snacks on the path hidden, spider rests at the last objective.
+
+### Animation tuning
+
+```bash
+uv run python main.py viewer --width 1200 --height 900 --fps 60 --step-ms 80
+```
+
+`--step-ms` = ms per A\* step (lower = faster). Full flags: `uv run python main.py viewer --help`.
 
 ## Run Tests
 
