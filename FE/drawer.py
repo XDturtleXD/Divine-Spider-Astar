@@ -210,10 +210,11 @@ class SceneDrawer:
         surface.blit(title_surf, (rect.x + 10, rect.y + 8))
         return pygame.Rect(rect.x + 8, rect.y + 32, rect.width - 16, rect.height - 40)
 
-    def _user_coord(self, pos: Position) -> Position:
-        # FE displays (0, 0) at bottom-left. cell_rect already places BE row 0 at the bottom
-        # of the screen, so user-facing labels are the BE row/col unchanged.
-        return pos
+    def _xy(self, pos: Position) -> Position:
+        # FE displays (0, 0) at bottom-left with x = col (horizontal), y = row (vertical).
+        # cell_rect already places BE row 0 at the bottom of the screen, so y == BE row.
+        row, col = pos
+        return (col, row)
 
     def _draw_legend_panel(self, surface: pygame.Surface, state: FrontendState, rect: pygame.Rect) -> None:
         if rect.width <= 0 or rect.height <= 0:
@@ -254,7 +255,7 @@ class SceneDrawer:
             if not subset:
                 label = "0  all collected"
             else:
-                coords = ", ".join(f"({r},{c})" for r, c in sorted(self._user_coord(p) for p in subset))
+                coords = ", ".join(f"({x},{y})" for x, y in sorted(self._xy(p) for p in subset))
                 label = f"{len(subset)}  {coords}"
             text_color = (255, 255, 255) if is_current else (200, 200, 205)
             text_surf = self._panel_font.render(label, True, text_color)
@@ -313,8 +314,8 @@ class SceneDrawer:
             )
             surface.blit(rank_label, (row_rect.x + 6, row_rect.y + 4))
 
-            ur, uc = self._user_coord(pos)
-            f_text = f"f={f_cost}  ({ur},{uc})"
+            x, y = self._xy(pos)
+            f_text = f"f={f_cost}  ({x},{y})"
             f_surf = self._panel_font.render(f_text, True, (255, 255, 255))
             surface.blit(f_surf, (row_rect.x + 44, row_rect.y + 4))
 
